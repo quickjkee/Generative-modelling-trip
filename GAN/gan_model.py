@@ -1,27 +1,33 @@
 import torch
+from torch import nn
 
 
 class Generator(torch.nn.Module):
 
     def __init__(self, input_size, output_size):
         super(Generator, self).__init__()
-        self.output_size = output_size
         self.input_size = input_size
-        self.fc1 = torch.nn.Linear(input_size, 20)  # we get input_size noise as input
-        self.fc2 = torch.nn.Linear(20, 130)
-        self.fc3 = torch.nn.Linear(130, output_size)
-        self.bn1 = torch.nn.BatchNorm1d(130)
-        self.dropout = torch.nn.Dropout(p=0.25)
+        self.gen = nn.Sequential(
+            nn.Linear(input_size, 256),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.2),
+            nn.Linear(256, 512),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.2),
+            nn.Linear(512, 1024),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.2),
+            nn.Linear(1024, output_size),
+            nn.Tanh(),
+        )
 
     def forward(self, x):
         assert x.size(dim=1) == self.input_size, 'Dimensional of input noise should equal initialized'
 
-        # x - input random noise with input_size dimensional
-        x = torch.nn.ReLU()(self.fc1(x))
-        x = self.dropout(x)
-        x = torch.nn.ReLU()(self.bn1(self.fc2(x)))
-        x = self.dropout(x)
-        out = torch.nn.Tanh()(self.fc3(x))
+        out = self.gen(x)
 
         return out
 
@@ -31,21 +37,28 @@ class Discriminator(torch.nn.Module):
     def __init__(self, input_size):
         super(Discriminator, self).__init__()
         self.input_size = input_size
-        self.fc1 = torch.nn.Linear(input_size, 20)  # we get input_size noise as input
-        self.fc2 = torch.nn.Linear(20, 15)
-        self.fc3 = torch.nn.Linear(15, 1)  # probability of true sample as output
-        self.bn1 = torch.nn.BatchNorm1d(15)
-        self.dropout = torch.nn.Dropout(p=0.25)
+        self.disc = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.2),
+            nn.Linear(128, 512),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.2),
+            nn.Linear(512, 1024),
+            nn.LeakyReLU(0.01),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.2),
+            nn.Linear(1024, 1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, x):
         x = x.view(-1, 28 * 28)
         assert x.size(dim=1) == self.input_size, 'Dimensional of input noise should equal initialized'
 
-        # x - input sample from true or generator distribution
-        x = torch.nn.ReLU()(self.fc1(x))
-        x = self.dropout(x)
-        x = torch.nn.ReLU()(self.bn1(self.fc2(x)))
-        out = torch.nn.Sigmoid()(self.fc3(x))
+        out = self.disc(x)
 
         return out
 
