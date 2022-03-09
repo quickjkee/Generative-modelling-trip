@@ -7,6 +7,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     data = datasets.MNIST(
         root='data',
         train=True,
@@ -24,7 +26,8 @@ if __name__ == '__main__':
 
     gan = GAN(input_size=input_size,
               output_size=output_size,
-              epochs=20)
+              epochs=20,
+              device=device)
 
     out = gan.fit(loaders)
 
