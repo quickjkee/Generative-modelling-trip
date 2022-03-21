@@ -1,42 +1,69 @@
-from vae_model import VAE
 import torch
 import matplotlib.pyplot as plt
 from torchvision import datasets
 from torchvision.transforms import ToTensor, Normalize
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from vae_model import VAE
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    conv_dims = [16, 32, 64, 128]
+    IMG_SIZE = 32
 
-    data = datasets.MNIST(
+    data_train = datasets.MNIST(
         root='data',
         train=True,
-        transform=transforms.Compose([ToTensor(), Normalize((0.5,), (0.5,))]),
+        transform=transforms.Compose([ToTensor(),
+                                      transforms.Resize((IMG_SIZE, IMG_SIZE))]),
         download=True,
     )
 
-    loaders = DataLoader(data,
-                         batch_size=100,
-                         shuffle=True,
-                         num_workers=1)
+    data_test = datasets.MNIST(
+        root='data',
+        train=False,
+        transform=transforms.Compose([ToTensor(),
+                                      transforms.Resize((IMG_SIZE, IMG_SIZE))]),
+        download=True,
+    )
 
-    hidden_dim = 64
-    data_dim = 28 * 28
+    trainloaders = DataLoader(data_train,
+                              batch_size=32,
+                              shuffle=True,
+                              num_workers=1)
+
+    testloaders = DataLoader(data_test,
+                             batch_size=32,
+                             shuffle=True,
+                             num_workers=1)
+
+    hidden_dim = 16
+    data_dim = 32 * 32
 
     vae = VAE(data_dim=data_dim,
               hidden_dim=hidden_dim,
+              conv_dims=conv_dims,
               device=device)
 
-    out = vae.fit(trainloader=loaders,
-                  testloader=loaders,
-                  epochs=50)
+    out = vae.fit(trainloader=trainloaders,
+                  testloader=testloaders,
+                  epochs=20)
 
-    # Sampling
-    noise = torch.randn(5, hidden_dim)
+    # Reconstruction
+    for sample in trainloaders:
+        out = vae(sample[0].to(device))
+        with torch.no_grad():
+            for o in out:
+                img = torch.reshape(o.to('cpu'), (IMG_SIZE, IMG_SIZE))
+                plt.imshow(img)
+                plt.show()
+        break
+
+    # Sampling from noise
+    noise = torch.randn(150, hidden_dim).to(device)
     objects = vae.decoder.sample(noise)
     with torch.no_grad():
         for obj in objects:
-            img = torch.reshape(obj, (28, 28))
+            img = torch.reshape(obj.to('cpu'), (IMG_SIZE, IMG_SIZE))
             plt.imshow(img)
             plt.show()

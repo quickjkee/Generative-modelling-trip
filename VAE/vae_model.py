@@ -1,4 +1,3 @@
-from torch.nn.modules.activation import Tanh
 import torch
 import time
 
@@ -6,42 +5,48 @@ from torch import nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, data_dim, hidden_dim):
+    def __init__(self, data_dim, hidden_dim, conv_dims, device):
         super(Encoder, self).__init__()
+
         self.data_dim = data_dim
         self.hidden_dim = hidden_dim
-        self.model = nn.Sequential(
-            nn.Linear(data_dim, 256),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(256, 512),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(512, 1024),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(1024, 2 * hidden_dim),
-            nn.ReLU(),
-        )
+        self.device = device
 
-        self.mu = None  # Expectation of Q(Z|X, Phi) distribution
-        self.log_sigma = None  # Dispersion of Q(Z|X, Phi) distribution
+        self.conv_dims = conv_dims  # List of dims
+
+        modules = []
+
+        in_channels = 1
+        for c_dim in conv_dims:
+            modules.append(
+                nn.Sequential(
+                    nn.Conv2d(in_channels, out_channels=c_dim,
+                              kernel_size=3, stride=2, padding=1),
+                    nn.BatchNorm2d(c_dim),
+                    nn.LeakyReLU())
+            )
+            in_channels = c_dim
+
+        modules.append(nn.AdaptiveAvgPool2d(output_size=1))
+        modules.append(nn.Flatten())
+
+        self.model = nn.Sequential(*modules)
+
+        self.mu = nn.Linear(conv_dims[-1], hidden_dim)  # Expectation of Q(Z|X, Phi) distribution
+        self.log_sigma = nn.Linear(conv_dims[-1], hidden_dim)  # Dispersion of Q(Z|X, Phi) distribution
 
     def forward(self, x):
-        assert x.size(dim=1) == self.data_dim, 'Wrong input size'
-
         out = self.model(x)
-        self.mu = out[:, :self.hidden_dim]
-        self.log_sigma = out[:, self.hidden_dim:]
+        mu = self.mu(out)
+        log_sigma = self.log_sigma(out)
 
-        return self.mu, self.log_sigma
+        return mu, log_sigma
 
     def sample(self, x):
         # Latent representation of input object
-        assert self.mu is not None, 'Latent distribution are not prepared'
-        assert x.size(dim=1) == self.data_dim, 'Wrong input size'
+        assert self.mu is not None, 'Latent distribution is not prepared'
 
-        eps = torch.randn(x.size(dim=0), self.hidden_dim).to(device)  # Samples from standard normal distribution
+        eps = torch.randn(x.size(dim=0), self.hidden_dim).to(self.device)  # Samples from standard normal distribution
         mu, log_sigma = self.forward(x)
 
         latent_samples = torch.exp(0.5 * log_sigma) * eps + mu
@@ -50,56 +55,84 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, data_dim, hidden_dim):
+    def __init__(self, data_dim, hidden_dim, conv_dims, device):
         super(Decoder, self).__init__()
+
         self.data_dim = data_dim
         self.hidden_dim = hidden_dim
-        self.model = nn.Sequential(
-            nn.Linear(hidden_dim, 256),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(256, 512),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(512, 1024),
-            nn.LeakyReLU(0.01),
-            nn.Dropout(0.2),
-            nn.Linear(1024, data_dim),
-            nn.Sigmoid()
-        )
+
+        self.device = device
+
+        self.conv_dims = conv_dims
+        self.conv_dims.reverse()
+
+        self.input_decoder = nn.Linear(hidden_dim, self.conv_dims[0] * 4)
+
+        modules = []
+        for i in range(len(self.conv_dims) - 1):
+            modules.append(
+                nn.Sequential(
+                    nn.ConvTranspose2d(self.conv_dims[i],
+                                       self.conv_dims[i + 1],
+                                       kernel_size=3,
+                                       stride=2,
+                                       padding=1,
+                                       output_padding=1),
+                    nn.BatchNorm2d(self.conv_dims[i + 1]),
+                    nn.ReLU())
+            )
+
+        self.decoder = nn.Sequential(*modules)
+
+        self.final_layer = nn.Sequential(
+            nn.ConvTranspose2d(self.conv_dims[-1],
+                               self.conv_dims[-1],
+                               kernel_size=3,
+                               stride=2,
+                               padding=1,
+                               output_padding=1),
+            nn.BatchNorm2d(self.conv_dims[-1]),
+            nn.ReLU(),
+            nn.Conv2d(self.conv_dims[-1], out_channels=1,
+                      kernel_size=3, padding=1),
+            nn.Sigmoid())
+
+        self.model = None
 
     def forward(self, x):
-        assert x.size(dim=1) == self.hidden_dim, 'Wrong input size'
+        # assert x.size(dim=1) == self.hidden_dim, 'Wrong input size'
 
-        out = self.model(x)
+        result = self.input_decoder(x)
+        result = torch.flatten(result)
+        result = result.view(-1, self.conv_dims[0], 2, 2)
+        result = self.decoder(result)
+        result = self.final_layer(result)
 
-        return out
+        return result
 
     def sample(self, noise):
         # Sampling an object from input noise, i.e. from N(0, I)
         assert noise.size(dim=1) == self.hidden_dim
 
-        objects_samples = self.model(noise)
+        objects_samples = self.forward(noise)
 
         return objects_samples
 
 
 class VAE(nn.Module):
-    def __init__(self, data_dim, hidden_dim, device):
+    def __init__(self, data_dim, hidden_dim, conv_dims, device):
         super(VAE, self).__init__()
         self.data_dim = data_dim
         self.hidden_dim = hidden_dim
         self.device = device
 
-        self.encoder = Encoder(data_dim, hidden_dim).to(device)
-        self.decoder = Decoder(data_dim, hidden_dim).to(device)
+        self.encoder = Encoder(data_dim, hidden_dim, conv_dims, device).to(device)
+        self.decoder = Decoder(data_dim, hidden_dim, conv_dims, device).to(device)
 
         self.mse = nn.MSELoss(reduction='sum')
         self.bce = nn.BCELoss(reduction='sum')
 
     def __call__(self, x):
-        assert x.size(dim=1) == self.data_dim, 'Wrong input size'
-
         # Getting a similar object as input
 
         latent_sample = self.encoder.sample(x)
@@ -135,7 +168,7 @@ class VAE(nn.Module):
         encoder_params = list(self.encoder.parameters())
         decoder_params = list(self.decoder.parameters())
         params = encoder_params + decoder_params
-        optimizer = torch.optim.Adam(params=params, lr=0.0001)
+        optimizer = torch.optim.Adam(params=params, lr=3e-4)
 
         print('opt=%s(lr=%f), epochs=%d, device=%s\n' % \
               (type(optimizer).__name__,
@@ -151,7 +184,7 @@ class VAE(nn.Module):
             train_loss = 0.0
 
             for i, batch_samples in enumerate(trainloader):
-                batch_samples = batch_samples[0].view(-1, self.data_dim).to(self.device)
+                batch_samples = batch_samples[0].to(self.device)
 
                 optimizer.zero_grad()
 
@@ -170,7 +203,7 @@ class VAE(nn.Module):
 
             with torch.no_grad():
                 for i, batch_samples in enumerate(testloader):
-                    batch_samples = batch_samples[0].view(-1, self.data_dim).to(self.device)
+                    batch_samples = batch_samples[0].to(self.device)
 
                     loss = self.loss_vae(batch_samples)
                     val_loss += loss.item() * batch_samples.size(0)
