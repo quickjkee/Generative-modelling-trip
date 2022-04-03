@@ -143,16 +143,18 @@ class VAE(nn.Module):
     def kl_divergence(self, x):
         # Calculation KL divergence between KL(Q(z|x) || P(z))
         mu, log_sigma = self.encoder(x)
-        loss = -0.5 * torch.sum(1 + log_sigma - torch.exp(log_sigma) - mu ** 2)
+        loss = (-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2).sum(dim=1)).mean(dim=0)
 
         return loss
 
     def expectation(self, x):
         # Calculation of |E_eps~N(0,I) {log p(x|eps*sigma + mu)}
+        batch_size = x.size(dim=0)
+
         latent_sample = self.encoder.sample(x)
         decoder_output = self.decoder(latent_sample)
 
-        loss = self.bce(decoder_output, x)
+        loss = self.bce(decoder_output, x) / batch_size
 
         return loss
 
