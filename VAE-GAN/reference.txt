@@ -1,0 +1,2 @@
+https://github.com/daQuincy/VAE-GAN-Autoencoding-Beyond-Pixels-Using-a-Similarity-Metric/blob/master/vaegan.py
+https://arxiv.org/pdf/1512.09300.pdf
