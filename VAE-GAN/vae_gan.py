@@ -28,7 +28,7 @@ class VAE_GAN(nn.Module):
         self.discriminator = Discriminator(hidden_dim, conv_dims, device).to(device)
 
         self.bce = nn.BCELoss(reduction='mean')
-        self.mse = nn.MSELoss(reduction='mean')
+        self.mse = nn.MSELoss(reduction='sum')
 
     def __call__(self, x):
         """
@@ -111,7 +111,7 @@ class VAE_GAN(nn.Module):
         x_de = self.__call__(x)
         D_l_x_de = self.discriminator.conv_out(x_de)
 
-        hidden_loss = self.mse(D_l_x, D_l_x_de)
+        hidden_loss = self.mse(D_l_x, D_l_x_de) / x.size(dim=0)
 
         return hidden_loss
 
@@ -256,9 +256,9 @@ class VAE_GAN(nn.Module):
                     gen_loss = self.generator_loss(batch_samples)
                     dis_loss = self.discriminator_loss(batch_samples)
 
-                    val_en_loss = en_loss.item() * batch_samples.size(0)
-                    val_gen_loss = gen_loss.item() * batch_samples.size(0)
-                    val_dis_loss = dis_loss.item() * batch_samples.size(0)
+                    val_en_loss += en_loss.item() * batch_samples.size(0)
+                    val_gen_loss += gen_loss.item() * batch_samples.size(0)
+                    val_dis_loss += dis_loss.item() * batch_samples.size(0)
 
             val_en_loss = val_en_loss / (len(testloader.dataset))
             val_gen_loss = val_gen_loss / (len(testloader.dataset))
