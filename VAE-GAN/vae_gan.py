@@ -2,6 +2,7 @@ import torch
 import time
 
 from torch import nn
+from torch.autograd import Variable
 
 
 class VAE_GAN(nn.Module):
@@ -27,8 +28,10 @@ class VAE_GAN(nn.Module):
         self.decoder = Decoder(hidden_dim, conv_dims, device).to(device)
         self.discriminator = Discriminator(hidden_dim, conv_dims, device).to(device)
 
-        self.bce = nn.BCELoss(reduction='mean')
+        self.bce = nn.BCELoss(reduction='sum')
         self.mse = nn.MSELoss(reduction='sum')
+
+        self.rate = 1e-5
 
     def __call__(self, x):
         """
@@ -40,8 +43,9 @@ class VAE_GAN(nn.Module):
         """
         latent_sample = self.encoder.sample(x)
         object_sample = self.decoder.forward(latent_sample)
+        probab = self.discriminator(object_sample)
 
-        return object_sample
+        return probab
 
     def prior_loss(self, x):
         """
@@ -50,11 +54,11 @@ class VAE_GAN(nn.Module):
         :return: (Float) Value of KL divergence
         """
         mu, log_sigma = self.encoder(x)
-        loss = (-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2).sum(dim=1)).mean(dim=0)
+        loss = torch.sum(-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2))
 
         return loss
 
-    def gan_loss(self, x, key):
+    def gan_loss(self, x):
         """
         Calculating gan_loss which is equal
 
@@ -74,17 +78,14 @@ class VAE_GAN(nn.Module):
         ones = torch.ones(size=(batch_size, 1)).to(self.device)
         zeros = torch.zeros(size=(batch_size, 1)).to(self.device)
 
-        noise = torch.randn(size=(batch_size, self.hidden_dim)).to(self.device)
+        noise = Variable(torch.randn(size=(batch_size, self.hidden_dim))).to(self.device)
 
-        if key:
-            real_loss = self.bce(self.discriminator(x), ones)
-        else:
-            real_loss = 0
+        real_loss = self.bce(self.discriminator(x), ones)
 
-        x_de = self.__call__(x)
+        x_de = self.decoder(self.encoder.sample(x))
         recon_loss = self.bce(self.discriminator(x_de), zeros)
 
-        x_noise = self.decoder.sample(noise)
+        x_noise = self.decoder(noise)
         fake_loss = self.bce(self.discriminator(x_noise), zeros)
 
         gan_loss = real_loss + recon_loss + fake_loss
@@ -106,60 +107,50 @@ class VAE_GAN(nn.Module):
         :param x: (Tensor) [B x C x W x H]
         :return: (Float) Value of hidden discriminator loss
         """
-        D_l_x = self.discriminator.conv_out(x)
+        d_l_x = self.discriminator.conv_out(x)
 
-        x_de = self.__call__(x)
-        D_l_x_de = self.discriminator.conv_out(x_de)
+        x_de = self.decoder(self.encoder.sample(x))
+        d_l_x_de = self.discriminator.conv_out(x_de)
 
-        hidden_loss = self.mse(D_l_x, D_l_x_de) / x.size(dim=0)
+        hidden_loss = torch.sum(0.5 * (d_l_x - d_l_x_de) ** 2)
 
         return hidden_loss
 
-    def encoder_loss(self, x):
+    def get_losses(self, x):
         """
-        Calculating encoder loss based on formula
-
-        L_encoder = L_prior + L_l
-
+        Calculating losses for encoder, generator, discriminator
         :param x: (Tensor) [B x C x W x H]
-        :return: (Float)
+        :return: List(Float) Three losses
         """
+        batch_size = x.size(dim=0)
+
+        ########
+        # Calculating encoder loss based on formula
+        #      L_encoder = L_prior + L_l
+        ########
+
         l_prior = self.prior_loss(x)
         l_l = self.hidden_loss(x)
 
-        l_encoder = l_prior + l_l
+        l_encoder = (l_prior + l_l) / batch_size
 
-        return l_encoder
+        ########
+        # Calculating generator loss based on formula
+        #      L_gan = -L_gan + L_l
+        ########
 
-    def generator_loss(self, x):
-        """
-        Calculating generator (decoder) loss based on formula
+        l_gan = self.gan_loss(x)
 
-        L_gen = -L_gan + L_l
+        l_gen = (self.rate * l_l - l_gan) / batch_size
 
-        :param x: (Tensor) [B x C x W x H]
-        :return: (Float)
-        """
-        l_gan = self.gan_loss(x, key=False)
-        l_l = self.hidden_loss(x)
+        ########
+        # Calculating generator loss based on formula
+        #      L_dis = L_gan
+        ########
 
-        l_gen = l_l - l_gan
+        l_dis = l_gan / batch_size
 
-        return l_gen
-
-    def discriminator_loss(self, x):
-        """
-        Calculating discriminator loss based on formula
-
-        L_dis = L_gan
-
-        :param x: (Tensor) [B x C x W x H]
-        :return: (Float)
-        """
-
-        l_dis = self.gan_loss(x, key=True)
-
-        return l_dis
+        return l_encoder, l_gen, l_dis
 
     def fit(self, trainloader, testloader, epochs):
         """
@@ -169,30 +160,10 @@ class VAE_GAN(nn.Module):
         :param epochs: (Int) Number of epochs
         :return: (dict) History of losses
         """
-
-        def optim_step(optim, loss_f, batch_sample):
-            """
-            Another step of optimizer
-            :param optim: Certain optimizer
-            :param loss: (Function)
-            :param batch_sample: (Tensor) [B x C x W x H]
-            :return:
-            """
-            optim.zero_grad()
-
-            loss = loss_f(batch_sample)
-            loss.backward()
-
-            optim.step()
-
-            elem_loss = loss * batch_sample.size(0)
-
-            return elem_loss
-
         params = {
-            'encoder': list(self.encoder.parameters()),
-            'generator': list(self.decoder.parameters()),
-            'discriminator': list(self.discriminator.parameters())
+            'encoder': self.encoder.parameters(),
+            'generator': self.decoder.parameters(),
+            'discriminator': self.discriminator.parameters()
         }
 
         en_optim = torch.optim.Adam(params=params['encoder'], lr=3e-4)
@@ -208,39 +179,52 @@ class VAE_GAN(nn.Module):
         history['loss'] = []
         history['val_loss'] = []
 
+        train_len = len(trainloader.dataset)
+        test_len = len(testloader.dataset)
+
         for epoch in range(epochs):
             start_time = time.time()
 
             ############ TRAINING PART ############
 
-            train_en_loss = 0.0
-            train_gen_loss = 0.0
-            train_dis_loss = 0.0
-
             for i, batch_samples in enumerate(trainloader):
-                batch_samples = batch_samples[0].to(self.device)
+                batch_samples = Variable(batch_samples[0], requires_grad=False).to(self.device)
+
+                loss_en, loss_gen, loss_dis = self.get_losses(batch_samples)
 
                 ##############
                 # ENCODER FIT
                 ##############
+                en_optim.zero_grad()
 
-                train_en_loss += optim_step(en_optim, self.encoder_loss, batch_samples)
+                loss_en.backward(retain_graph=True, inputs=params['encoder'])
+                en_optim.step()
 
                 ##############
                 # GENERATOR FIT
                 ##############
+                gen_optim.zero_grad()
 
-                train_gen_loss += optim_step(gen_optim, self.generator_loss, batch_samples)
+                loss_gen.backward(retain_graph=True, inputs=params['generator'])
+                gen_optim.step()
 
                 ##############
                 # DISCRIMINATOR FIT
                 ##############
+                dis_optim.zero_grad()
 
-                train_dis_loss += optim_step(dis_optim, self.discriminator_loss, batch_samples)
+                loss_dis.backward(inputs=params['discriminator'])
+                dis_optim.step()
 
-            train_en_loss = train_en_loss / (len(trainloader.dataset))
-            train_gen_loss = train_gen_loss / (len(trainloader.dataset))
-            train_dis_loss = train_dis_loss / (len(trainloader.dataset))
+                end_time = time.time()
+                work_time = end_time - start_time
+
+                print('Epoch/batch %3d/%3d \n'
+                      'train_en_loss %5.5f, train_gen_loss %5.5f, train_dis_loss %5.5f \n'
+                      'batch time %5.2f sec' % \
+                      (epoch + 1, i,
+                       loss_en.item(), loss_gen.item(), loss_dis.item(),
+                       work_time))
 
             ############ VALIDATION PART ############
 
@@ -252,32 +236,22 @@ class VAE_GAN(nn.Module):
                 for i, batch_samples in enumerate(testloader):
                     batch_samples = batch_samples[0].to(self.device)
 
-                    en_loss = self.encoder_loss(batch_samples)
-                    gen_loss = self.generator_loss(batch_samples)
-                    dis_loss = self.discriminator_loss(batch_samples)
+                    loss_en, loss_gen, loss_dis = self.get_losses(batch_samples)
 
-                    val_en_loss += en_loss.item() * batch_samples.size(0)
-                    val_gen_loss += gen_loss.item() * batch_samples.size(0)
-                    val_dis_loss += dis_loss.item() * batch_samples.size(0)
+                    val_en_loss += loss_en.item() * batch_samples.size(dim=0)
+                    val_gen_loss += loss_gen.item() * batch_samples.size(dim=0)
+                    val_dis_loss += loss_dis.item() * batch_samples.size(dim=0)
 
-            val_en_loss = val_en_loss / (len(testloader.dataset))
-            val_gen_loss = val_gen_loss / (len(testloader.dataset))
-            val_dis_loss = val_dis_loss / (len(testloader.dataset))
-
-            end_time = time.time()
-            work_time = end_time - start_time
+            val_en_loss = val_en_loss / test_len
+            val_gen_loss = val_gen_loss / test_len
+            val_dis_loss = val_dis_loss / test_len
 
             if (epoch + 1):
                 print('Epoch %3d/%3d \n'
-                       'train_en_loss %5.5f, train_gen_loss %5.5f, train_dis_loss %5.5f \n'
-                       'val_en_loss %5.5f, val_gen_loss %5.5f, val_dis_loss %5.5f \n'
-                       'epoch time %5.2f sec' % \
+                      'val_en_loss %5.5f, val_gen_loss %5.5f, val_dis_loss %5.5f \n' % \
                       (epoch + 1, epochs,
-                       train_en_loss, train_gen_loss, train_dis_loss,
-                       val_en_loss, val_gen_loss, val_dis_loss,
-                       work_time))
+                       val_en_loss, val_gen_loss, val_dis_loss))
 
-            history['loss'].append(train_en_loss + train_gen_loss + train_dis_loss)
             history['val_loss'].append(val_en_loss + val_gen_loss + val_dis_loss)
 
         return history

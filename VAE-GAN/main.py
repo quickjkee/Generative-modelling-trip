@@ -12,14 +12,15 @@ from models import Discriminator, Decoder, Encoder
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    conv_dims = [16, 32, 64, 128]
+    conv_dims = [32, 64, 128, 256, 512]
     IMG_SIZE = 128
 
     data_train = datasets.MNIST(
         root='data',
         train=True,
         transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((IMG_SIZE, IMG_SIZE))]),
+                                      transforms.Resize((IMG_SIZE, IMG_SIZE)),
+                                      transforms.Normalize((0.5,), (0.5,))]),
         download=True,
     )
 
@@ -27,17 +28,18 @@ if __name__ == '__main__':
         root='data',
         train=False,
         transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((IMG_SIZE, IMG_SIZE))]),
+                                      transforms.Resize((IMG_SIZE, IMG_SIZE)),
+                                      transforms.Normalize((0.5,), (0.5,))]),
         download=True,
     )
 
     trainloaders = DataLoader(data_train,
-                              batch_size=32,
+                              batch_size=128,
                               shuffle=True,
                               num_workers=1)
 
     testloaders = DataLoader(data_test,
-                             batch_size=32,
+                             batch_size=128,
                              shuffle=True,
                              num_workers=1)
 

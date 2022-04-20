@@ -1,6 +1,7 @@
 import torch
 
 from torch import nn
+from torch.autograd import Variable
 
 
 class Encoder(nn.Module):
@@ -64,7 +65,7 @@ class Encoder(nn.Module):
         """
         mu, log_sigma = self.forward(x)
 
-        eps = torch.randn(x.size(dim=0), self.hidden_dim).to(self.device)
+        eps = Variable(torch.randn(x.size(dim=0), self.hidden_dim)).to(self.device)
         hidden_sample = mu + torch.exp(0.5 * log_sigma) * eps
 
         return hidden_sample
@@ -88,9 +89,9 @@ class Decoder(nn.Module):
         self.hidden_dim = hidden_dim
 
         conv_dims.reverse()  # Reversing dims to create decoder
-        self.conv_dims = conv_dims[:-1] + [conv_dims[-2]]  # Decreasing number of parameters for prevent overfitting
+        self.conv_dims = conv_dims  # Decreasing number of parameters for prevent overfitting
 
-        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 64)
+        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 16)
 
         """
         Each model`s layer will upscale input image size by two
@@ -109,7 +110,7 @@ class Decoder(nn.Module):
                                        output_padding=1
                                        ),
                     nn.BatchNorm2d(self.conv_dims[i + 1]),
-                    nn.LeakyReLU()
+                    nn.ReLU()
                 )
             )
         self.model = nn.Sequential(*model)
@@ -123,13 +124,13 @@ class Decoder(nn.Module):
                                output_padding=1
                                ),
             nn.BatchNorm2d(self.conv_dims[i + 1]),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Conv2d(in_channels=self.conv_dims[-1],
                       out_channels=1,
                       kernel_size=3,
                       padding=1
                       ),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def forward(self, z):
@@ -138,7 +139,7 @@ class Decoder(nn.Module):
         :param z: (Tensor) [B x hidden_dim]
         :return: (Tensor) [B x C x W x H]
         """
-        input = self.input_layer(z).view(-1, self.conv_dims[0], 8, 8)
+        input = self.input_layer(z).view(-1, self.conv_dims[0], 4, 4)
         out_decoder = self.model(input)
         out_final = self.final_layer(out_decoder)
 
@@ -161,7 +162,7 @@ class Discriminator(nn.Module):
     #####
     def __init__(self, hidden_dim, conv_dims, device):
         """
-        Constructing discriminator with same strcucture as encoder
+        Constructing discriminator with same structure as encoder
         :param hidden_dim:
         :param conv_dims:
         :param device:
@@ -213,6 +214,11 @@ class Discriminator(nn.Module):
         :param x: (Tensor) [B x C x W x H]
         :return: (Tensor) [B x C_last x W_last x H_last]
         """
-        conv_out = self.model(x)
+        batch_size = x.size(dim=0)
 
-        return conv_out
+        for i, layer in enumerate(self.model):
+            x = layer(x)
+            if i == 2:
+                out = x.view(batch_size, -1)
+
+        return out
