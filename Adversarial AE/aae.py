@@ -1,7 +1,11 @@
 import torch
+import numpy as np
+import cv2
 import time
 
 from torch import nn
+
+IMG_SIZE = 32
 
 
 class AAE(nn.Module):
@@ -31,6 +35,8 @@ class AAE(nn.Module):
         self.mse = nn.MSELoss()
         self.bce = nn.BCELoss()
 
+        self.threshold = torch.Tensor([0.8])
+
     def __call__(self, x):
         """
         :param x: (Tensor) [B x C x W x H]
@@ -44,19 +50,53 @@ class AAE(nn.Module):
 
         return out
 
+    def get_contours(self, x):
+        """
+        :param x: (Tensor) [B x C x W x H]
+        :return: Tuple(Array) Tuple with cooridnates of all polygons
+        """
+        batch_size = x.size(dim=0)
+
+        array_x = np.uint8(x.cpu().detach().numpy())
+
+        edges = [cv2.Canny(x.reshape(IMG_SIZE, IMG_SIZE), 30, 50) for x in array_x]
+
+        X = []
+        Y = []
+        for edge in edges:
+            contours = cv2.findContours(edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
+            contours = np.concatenate(contours).reshape(-1, 2)
+
+            x = contours[:, 0]
+            y = contours[:, 1]
+
+            X.append(x)
+            Y.append(y)
+
+        return X, Y
+
     def recon_loss(self, x, recon_object):
         """
         Calculating reconstruction loss based on formula
 
         L_recon = |E_q {log p(x|z)}, where p(x|z) = |N(x | decoder(encoder(x)), I)
 
-        :param x: (Tensor) [B x C x W x H]
+        :param x: (Tensor) [B x C x W x H] True object
         :param recon_object: (Tensor) [B x C x W x H]
         :return: (Float)
         """
-        recon_loss = 0.5 * self.mse(recon_object, x)
+        batch_size = x.size(dim=0)
 
-        return recon_loss
+        x_contours, y_contours = self.get_contours(x)
+
+        recon_loss = (recon_object - x) ** 2
+
+        for i in range(batch_size):
+            recon_loss[i, :, y_contours[i], x_contours[i]] *= 15
+
+        weighted_loss = torch.mean(recon_loss)
+
+        return weighted_loss
 
     def encoder_reg(self, d_z):
         """
@@ -90,17 +130,18 @@ class AAE(nn.Module):
         ones = torch.ones(size=(batch_size, 1)).to(self.device)
         zeros = torch.zeros(size=(batch_size, 1)).to(self.device)
 
-        discr_reg = self.bce(d_prior, ones) + self.bce(d_z, zeros)
+        discr_reg = 0.5 * (self.bce(d_prior, ones) + self.bce(d_z, zeros))
 
         return discr_reg
 
-    """
     def get_losses(self, x):
-        
+
+        """
         Get all losses for calculating reconstruction and regularization phases
         :param x: (Tensor) [B x C x W x H]
         :return: (Float)
-        
+        """
+
         batch_size = x.size(dim=0)
 
         z_sample = self.encoder(x)
@@ -120,7 +161,6 @@ class AAE(nn.Module):
         encoder_reg = self.encoder_reg(d_z_sample_1)
 
         return recon_loss, discrim_reg, encoder_reg
-    """
 
     def fit(self, trainloader, testloader, epochs):
         """
@@ -136,9 +176,9 @@ class AAE(nn.Module):
             'discriminator': list(self.discriminator.parameters())
         }
 
-        ae_optim = torch.optim.Adam(params=params['ae'], lr=3e-4)
-        en_optim = torch.optim.Adam(params=params['encoder'], lr=3e-4)
-        dis_optim = torch.optim.Adam(params=params['discriminator'], lr=3e-4)
+        ae_optim = torch.optim.Adam(params=params['ae'], lr=1e-3)
+        en_optim = torch.optim.Adam(params=params['encoder'], lr=1e-4)
+        dis_optim = torch.optim.Adam(params=params['discriminator'], lr=1e-4)
 
         print('opt=%s(lr=%f), epochs=%d, device=%s,\n'
               'en loss \u2193, gen loss \u2193, dis loss \u2191' % \
@@ -169,7 +209,7 @@ class AAE(nn.Module):
 
                 ae_optim.zero_grad()
 
-                recon_loss.backward(inputs=params['ae'])
+                recon_loss.backward()
                 ae_optim.step()
 
                 #######################
@@ -181,14 +221,14 @@ class AAE(nn.Module):
                 d_z_sample = self.discriminator(z_sample)
 
                 # Standard normal distribution was taken as prior
-                z_prior = torch.randn(size=(batch_samples.size(dim=0), self.hidden_dim)).to(self.device)
+                z_prior = torch.normal(mean=0, std=1, size=(batch_samples.size(dim=0), self.hidden_dim)).to(self.device)
                 d_z_prior = self.discriminator(z_prior)
 
                 discrim_reg = self.discr_reg(d_z_sample, d_z_prior)
 
                 dis_optim.zero_grad()
 
-                discrim_reg.backward(inputs=params['discriminator'])
+                discrim_reg.backward()
                 dis_optim.step()
 
                 # Encoder (generator) update
@@ -199,7 +239,7 @@ class AAE(nn.Module):
 
                 en_optim.zero_grad()
 
-                encoder_reg.backward(inputs=params['encoder'])
+                encoder_reg.backward()
                 en_optim.step()
 
                 end_time = time.time()
@@ -213,14 +253,13 @@ class AAE(nn.Module):
                        work_time))
 
             ############ VALIDATION PART ############
-
             val_recon_loss = 0.0
             val_gen_loss = 0.0
             val_dis_loss = 0.0
 
             with torch.no_grad():
                 for i, batch_samples in enumerate(testloader):
-                    batch_samples = batch_samples[0].to(self.device)
+                    batch_samples = batch_samples['image'].to(self.device)
 
                     recon_loss, discrim_reg, encoder_reg = self.get_losses(batch_samples)
 
