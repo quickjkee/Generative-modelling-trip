@@ -31,7 +31,8 @@ class VAE_GAN(nn.Module):
         self.bce = nn.BCELoss(reduction='sum')
         self.mse = nn.MSELoss(reduction='sum')
 
-        self.rate = 1e-5
+        self.rate = 1
+        self.gamma = 1e-3
 
     def __call__(self, x):
         """
@@ -41,24 +42,24 @@ class VAE_GAN(nn.Module):
         :param x: (Tensor) [B x C x W x H]
         :return: (Tensor) Similar as input object
         """
-        latent_sample = self.encoder.sample(x)
+        mu, sigma = self.encoder(x)
+        latent_sample = self.encoder.sample(x, mu, sigma)
         object_sample = self.decoder.forward(latent_sample)
         probab = self.discriminator(object_sample)
 
         return probab
 
-    def prior_loss(self, x):
+    def prior_loss(self, mu, log_sigma):
         """
         Calculating KL-divergence between q(z|x) and N(0, I)
         :param x: (Tensor) [B x C x W x H]
         :return: (Float) Value of KL divergence
         """
-        mu, log_sigma = self.encoder(x)
         loss = torch.sum(-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2))
 
         return loss
 
-    def gan_loss(self, x):
+    def gan_loss(self, x, x_de):
         """
         Calculating gan_loss which is equal
 
@@ -77,22 +78,23 @@ class VAE_GAN(nn.Module):
 
         ones = torch.ones(size=(batch_size, 1)).to(self.device)
         zeros = torch.zeros(size=(batch_size, 1)).to(self.device)
+        zeros_2 = torch.zeros(size=(2 * batch_size, 1)).to(self.device)
 
         noise = Variable(torch.randn(size=(batch_size, self.hidden_dim))).to(self.device)
-
-        real_loss = self.bce(self.discriminator(x), ones)
-
-        x_de = self.decoder(self.encoder.sample(x))
-        recon_loss = self.bce(self.discriminator(x_de), zeros)
+        noise_2 = Variable(torch.randn(size=(2 * batch_size, self.hidden_dim))).to(self.device)
 
         x_noise = self.decoder(noise)
-        fake_loss = self.bce(self.discriminator(x_noise), zeros)
+        x_noise_2 = self.decoder(noise_2)
 
-        gan_loss = real_loss + recon_loss + fake_loss
+        disc_x, disc_x_de, disc_noise, disc_noise_2 = self.discriminator(x), self.discriminator(
+            x_de), self.discriminator(x_noise), self.discriminator(x_noise_2)
 
-        return gan_loss
+        gan_loss_discr = self.bce(disc_x, ones) + self.bce(disc_x_de, zeros) + self.bce(disc_noise, zeros)
+        gan_loss_gen = self.bce(disc_x_de, zeros) + self.bce(disc_noise_2, zeros_2)
 
-    def hidden_loss(self, x):
+        return gan_loss_discr, gan_loss_gen
+
+    def hidden_loss(self, x, x_de):
         """
         Calculating reconstruction loss with following formula
         using reparameterizarion trick and M-C estimation
@@ -108,8 +110,6 @@ class VAE_GAN(nn.Module):
         :return: (Float) Value of hidden discriminator loss
         """
         d_l_x = self.discriminator.conv_out(x)
-
-        x_de = self.decoder(self.encoder.sample(x))
         d_l_x_de = self.discriminator.conv_out(x_de)
 
         hidden_loss = torch.sum(0.5 * (d_l_x - d_l_x_de) ** 2)
@@ -123,32 +123,35 @@ class VAE_GAN(nn.Module):
         :return: List(Float) Three losses
         """
         batch_size = x.size(dim=0)
+        mu, log_sigma = self.encoder(x)
+
+        x_de = self.decoder.forward(self.encoder.sample(x, mu, log_sigma))
 
         ########
         # Calculating encoder loss based on formula
         #      L_encoder = L_prior + L_l
         ########
 
-        l_prior = self.prior_loss(x)
-        l_l = self.hidden_loss(x)
+        l_prior = self.prior_loss(mu, log_sigma)
+        l_l = self.hidden_loss(x, x_de)
 
-        l_encoder = (l_prior + l_l) / batch_size
+        l_encoder = (5 * l_prior + l_l) / batch_size
 
         ########
         # Calculating generator loss based on formula
         #      L_gan = -L_gan + L_l
         ########
 
-        l_gan = self.gan_loss(x)
+        l_gan_discr, l_gan_gen = self.gan_loss(x, x_de)
 
-        l_gen = (self.rate * l_l - l_gan) / batch_size
+        l_gen = (self.gamma * l_l - l_gan_gen) / batch_size
 
         ########
         # Calculating generator loss based on formula
         #      L_dis = L_gan
         ########
 
-        l_dis = l_gan / batch_size
+        l_dis = l_gan_discr / batch_size
 
         return l_encoder, l_gen, l_dis
 
@@ -160,15 +163,9 @@ class VAE_GAN(nn.Module):
         :param epochs: (Int) Number of epochs
         :return: (dict) History of losses
         """
-        params = {
-            'encoder': self.encoder.parameters(),
-            'generator': self.decoder.parameters(),
-            'discriminator': self.discriminator.parameters()
-        }
-
-        en_optim = torch.optim.Adam(params=params['encoder'], lr=3e-4)
-        gen_optim = torch.optim.Adam(params=params['generator'], lr=3e-4)
-        dis_optim = torch.optim.Adam(params=params['discriminator'], lr=3e-4)
+        en_optim = torch.optim.Adam(params=self.encoder.parameters(), lr=3e-4)
+        gen_optim = torch.optim.Adam(params=self.decoder.parameters(), lr=3e-4)
+        dis_optim = torch.optim.Adam(params=self.discriminator.parameters(), lr=3e-4)
 
         print('opt=%s(lr=%f), epochs=%d, device=%s,\n'
               'en loss \u2193, gen loss \u2193, dis loss \u2191' % \
@@ -197,7 +194,7 @@ class VAE_GAN(nn.Module):
                 ##############
                 en_optim.zero_grad()
 
-                loss_en.backward(retain_graph=True, inputs=params['encoder'])
+                loss_en.backward(retain_graph=True, inputs=list(self.encoder.parameters()))
                 en_optim.step()
 
                 ##############
@@ -205,7 +202,7 @@ class VAE_GAN(nn.Module):
                 ##############
                 gen_optim.zero_grad()
 
-                loss_gen.backward(retain_graph=True, inputs=params['generator'])
+                loss_gen.backward(retain_graph=True, inputs=list(self.decoder.parameters()))
                 gen_optim.step()
 
                 ##############
@@ -213,7 +210,7 @@ class VAE_GAN(nn.Module):
                 ##############
                 dis_optim.zero_grad()
 
-                loss_dis.backward(inputs=params['discriminator'])
+                loss_dis.backward(inputs=list(self.discriminator.parameters()))
                 dis_optim.step()
 
                 end_time = time.time()

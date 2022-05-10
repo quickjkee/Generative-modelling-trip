@@ -12,7 +12,7 @@ from models import Discriminator, Decoder, Encoder
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    conv_dims = [32, 64, 128, 256, 512]
+    conv_dims = [32, 32, 64, 128, 256]
     IMG_SIZE = 128
 
     data_train = datasets.MNIST(
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                              shuffle=True,
                              num_workers=1)
 
-    hidden_dim = 16
+    hidden_dim = 32
     data_dim = 32 * 32
 
     vae = VAE_GAN(Encoder=Encoder,

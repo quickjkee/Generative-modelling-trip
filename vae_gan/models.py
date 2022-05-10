@@ -31,19 +31,19 @@ class Encoder(nn.Module):
                               out_channels=channels,
                               kernel_size=3,
                               stride=2),
-                    nn.BatchNorm2d(channels),
-                    nn.LeakyReLU())
+                    nn.BatchNorm2d(channels, momentum=0.9),
+                    nn.ReLU())
             )
             in_channel = channels
 
-        model.append(nn.AdaptiveMaxPool2d(output_size=1))
+        #model.append(nn.AdaptiveMaxPool2d(output_size=1))
         model.append(nn.Flatten())
 
         self.model = nn.Sequential(*model)
 
-        self.mu = nn.Linear(in_features=self.conv_dims[-1],
+        self.mu = nn.Linear(in_features=9 * self.conv_dims[-1],
                             out_features=self.hidden_dim)
-        self.log_sigma = nn.Linear(in_features=self.conv_dims[-1],
+        self.log_sigma = nn.Linear(in_features=9 * self.conv_dims[-1],
                                    out_features=self.hidden_dim)
 
     def forward(self, x):
@@ -57,14 +57,12 @@ class Encoder(nn.Module):
 
         return mu, log_sigma
 
-    def sample(self, x):
+    def sample(self, x, mu, log_sigma):
         """
         Sample from hidden conditional distribution q(z|x) using reparameterization trick
         :param x: (Tensor) [B x C x W x H]
         :return: (Tensor) [B x hidden_dim]
         """
-        mu, log_sigma = self.forward(x)
-
         eps = Variable(torch.randn(x.size(dim=0), self.hidden_dim)).to(self.device)
         hidden_sample = mu + torch.exp(0.5 * log_sigma) * eps
 
@@ -109,7 +107,7 @@ class Decoder(nn.Module):
                                        padding=1,
                                        output_padding=1
                                        ),
-                    nn.BatchNorm2d(self.conv_dims[i + 1]),
+                    nn.BatchNorm2d(self.conv_dims[i + 1], momentum=0.9),
                     nn.ReLU()
                 )
             )
@@ -123,7 +121,7 @@ class Decoder(nn.Module):
                                padding=1,
                                output_padding=1
                                ),
-            nn.BatchNorm2d(self.conv_dims[i + 1]),
+            nn.BatchNorm2d(self.conv_dims[i + 1], momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=self.conv_dims[-1],
                       out_channels=1,
@@ -184,8 +182,8 @@ class Discriminator(nn.Module):
                               out_channels=channels,
                               kernel_size=3,
                               stride=2),
-                    nn.BatchNorm2d(channels),
-                    nn.LeakyReLU())
+                    nn.BatchNorm2d(channels, momentum=0.9),
+                    nn.ReLU())
             )
             in_channel = channels
 
@@ -194,7 +192,7 @@ class Discriminator(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-        self.prob = nn.Linear(in_features=self.conv_dims[-1],
+        self.prob = nn.Linear(in_features= self.conv_dims[-1],
                               out_features=1)
 
     def forward(self, x):
