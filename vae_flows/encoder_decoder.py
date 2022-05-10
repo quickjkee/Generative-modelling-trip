@@ -1,7 +1,5 @@
 import torch
-
 from torch import nn
-from torch.autograd import Variable
 
 
 class Encoder(nn.Module):
@@ -41,18 +39,38 @@ class Encoder(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-        self.sample = nn.Linear(in_features=self.conv_dims[-1],
-                                out_features=self.hidden_dim)
+        self.mu = nn.Linear(in_features=conv_dims[-1],
+                            out_features=hidden_dim)  # Expectation of Q(Z|X, Phi) distribution
+        self.log_sigma = nn.Linear(in_features=conv_dims[-1],
+                                   out_features=hidden_dim)  # Log variance of Q(Z|X, Phi) distribution
 
     def forward(self, x):
         """
         :param x: (Tensor) [B x C x W x H]
-        :return: (Tensor) Tuple of expectation and logarithm of variance (dispersion)
+        :return: Tuple(Tensor, Tensor) Tuple of expectation and logarithm of variance (dispersion)
         """
         conv_out = self.model(x)
-        sample = self.sample(conv_out)
+        mu = self.mu(conv_out)
+        log_sigma = self.log_sigma(conv_out)
 
-        return sample
+        return mu, log_sigma
+
+    def sample(self, mu, log_sigma):
+        """
+        Return sample from latent posterior distribution using reparameterization trick
+        :param mu: (Tensor) [B x hidden_dim] Expectation of latent distribution
+        :param log_sigma: (Tensor) [B x hidden_dim] Log of variance of latent distribution
+        :return: (Tensor) [B x hidden_dim]
+        """
+        # Latent representation of input object
+        assert self.mu is not None, 'Latent distribution is not prepared'
+
+        # Samples from standard normal distribution
+        eps = torch.randn(mu.size(dim=0), self.hidden_dim).to(self.device)
+
+        latent_samples = torch.exp(0.5 * log_sigma) * eps + mu
+
+        return latent_samples
 
 
 class Decoder(nn.Module):
@@ -128,71 +146,3 @@ class Decoder(nn.Module):
         out_final = self.final_layer(out_decoder)
 
         return out_final
-
-    def sample(self, noise):
-        """
-        Decoding random noise to input like object
-        :param noise: (Tensor) [B x hidden_dim]
-        :return: (Tensor) [B x C x W x H]
-        """
-        assert noise.size(dim=0) == self.hidden_dim, 'Size of noise should equal hidden dimension'
-        object_sample = self.forward(noise)
-
-        return object_sample
-
-
-class Discriminator(nn.Module):
-    ######
-    # Model for checking whether latent vector from true prior distribution or not
-    #####
-    def __init__(self, hidden_dim, n_layers, device):
-        """
-        Constructing discriminator with same structure as encoder
-        :param hidden_dim: (Integer) Dimension of hidden vector
-        :param device: Current working device
-        """
-        super(Discriminator, self).__init__()
-
-        self.device = device
-
-        self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
-
-        model = []
-
-        in_dim = self.hidden_dim
-        for _ in range(n_layers):
-            model.append(
-                nn.Sequential(
-                    nn.Linear(in_features=in_dim,
-                              out_features=in_dim * 4),
-                    nn.BatchNorm1d(in_dim * 4),
-                    nn.ReLU())
-            )
-            in_dim = in_dim * 4
-
-        for _ in range(n_layers):
-            model.append(
-                nn.Sequential(
-                    nn.Linear(in_features=in_dim,
-                              out_features=int(in_dim / 4)),
-                    nn.BatchNorm1d(int(in_dim / 4)),
-                    nn.ReLU())
-            )
-            in_dim = int(in_dim / 4)
-
-        self.model = nn.Sequential(*model)
-
-        self.prob = nn.Linear(in_features=in_dim,
-                              out_features=1)
-
-    def forward(self, x):
-        """
-        Deciding true or fake object
-        :param x: (Tensor) [B x C x W x H]
-        :return: (Float)
-        """
-        conv_out = self.model(x)
-        prob = torch.sigmoid(self.prob(conv_out))
-
-        return prob

@@ -1,18 +1,18 @@
 import torch
 import matplotlib.pyplot as plt
+import numpy as np
 
 from torchvision import datasets
 from torchvision.transforms import ToTensor, Normalize
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
-from vae_gan import VAE_GAN
-from models import Discriminator, Decoder, Encoder
-
+from planar_flow import PlanarFlow
+from vae_flows import VaeFlow
+from encoder_decoder import Encoder, Decoder
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    conv_dims = [32, 64, 128, 256, 512]
     IMG_SIZE = 128
 
     data_train = datasets.MNIST(
@@ -43,35 +43,35 @@ if __name__ == '__main__':
                              shuffle=True,
                              num_workers=1)
 
-    hidden_dim = 16
-    data_dim = 32 * 32
+    # Flow
+    hidden_dim = 32
+    flow_size = 64
+    activation = torch.nn.Tanh()
+    der_activation = 1  # Пока так, потом поменять!
 
-    vae = VAE_GAN(Encoder=Encoder,
-                  Decoder=Decoder,
-                  Discriminator=Discriminator,
-                  hidden_dim=hidden_dim,
-                  conv_dims=conv_dims,
-                  device=device)
+    flow = PlanarFlow(len_f=flow_size,
+                      h_dim=hidden_dim,
+                      activation=activation,
+                      der_activation=der_activation)
 
-    out = vae.fit(trainloader=trainloaders,
-                  testloader=testloaders,
-                  epochs=20)
+    # Encoder/Decoder
+    conv_dims = [16, 32, 64, 128, 256]
 
-    # Reconstruction
-    for sample in trainloaders:
-        out = vae(sample[0].to(device))
-        with torch.no_grad():
-            for o in out:
-                img = torch.reshape(o.to('cpu'), (IMG_SIZE, IMG_SIZE))
-                plt.imshow(img)
-                plt.show()
-        break
+    encoder = Encoder(hidden_dim=hidden_dim,
+                      conv_dims=conv_dims,
+                      device=device)
 
-    # Sampling from noise
-    noise = torch.randn(150, hidden_dim).to(device)
-    objects = vae.decoder.sample(noise)
-    with torch.no_grad():
-        for obj in objects:
-            img = torch.reshape(obj.to('cpu'), (IMG_SIZE, IMG_SIZE))
-            plt.imshow(img)
-            plt.show()
+    decoder = Decoder(hidden_dim=hidden_dim,
+                      conv_dims=conv_dims,
+                      device=device)
+
+    # VaeFlow
+    vae_flow = VaeFlow(encoder=encoder,
+                       decoder=decoder,
+                       flow=flow,
+                       hidden_dim=hidden_dim,
+                       device=device)
+
+    vae_flow.fit(trainloader=trainloaders,
+                 testloader=testloaders,
+                 epochs=10)
