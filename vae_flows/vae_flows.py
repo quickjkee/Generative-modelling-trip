@@ -51,7 +51,7 @@ class VaeFlow(nn.Module):
         :param num: (Integer) Number of samples
         :return: (Tensor) [num x C x W x H]
         """
-        noise = torch.randn(size=(num, self.hidden_dim)).to(device)
+        noise = torch.randn(size=(num, self.hidden_dim)).to(self.device)
 
         flow_noise, _ = self.flow.flow(noise)
         decoded_noise = self.decoder(flow_noise)
@@ -81,10 +81,13 @@ class VaeFlow(nn.Module):
         prior = self.prior(f_z)
         latent_posterior = self.latent_posterior(z, mu, log_sigma)
 
-        # ELBO
-        elbo = torch.mean(0.1 * object_posterior + prior - latent_posterior + flow_det, dim=0)
+        recon_loss = -object_posterior
+        kld = latent_posterior - prior - flow_det
 
-        return elbo
+        # ELBO loss
+        elbo_loss = 0.1 * recon_loss + 150 * kld
+
+        return elbo_loss.mean(dim=0), recon_loss.mean(dim=0), kld.mean(dim=0)
 
     def object_posterior(self, x, x_decoded):
         """
@@ -110,7 +113,7 @@ class VaeFlow(nn.Module):
         :param f_z: (Tensor) [B x hidden_dim] Latent samples passed through flow
         :return: (Float)
         """
-        prior = -self.mse(f_z, torch.ones_like(f_z))
+        prior = (-0.5 * torch.pow(f_z, 2)).sum(dim=1)
 
         return prior
 
@@ -125,15 +128,7 @@ class VaeFlow(nn.Module):
         :param log_sigma: (Tensor) [B x hidden_dim] Log of var of q(z|x)
         :return: (Float)
         """
-        se = torch.exp(0.5 * log_sigma)  # Standard deviation, sqrt(sigma)
-
-        det_se = 0.5 * torch.sum(log_sigma, dim=1)
-        first_term = -det_se
-
-        z_new = (z - mu) / se
-        second_term = 0.5 * self.mse(z_new, torch.ones_like(z_new))
-
-        latent_posterior = first_term - second_term
+        latent_posterior = (-0.5 * (log_sigma + torch.pow(z - mu, 2) / torch.exp(log_sigma))).sum(dim=1)
 
         return latent_posterior
 
@@ -172,7 +167,7 @@ class VaeFlow(nn.Module):
 
                 optimizer.zero_grad()
 
-                elbo_loss = -1 * self.elbo(batch_samples)
+                elbo_loss, recon_loss, kld = self.elbo(batch_samples)
                 elbo_loss.backward()
 
                 optimizer.step()
@@ -181,10 +176,12 @@ class VaeFlow(nn.Module):
                 work_time = end_time - start_time
 
                 print('Epoch/batch %3d/%3d \n'
-                      'elbo loss %5.2f \n'
+                      'elbo loss %5.2f, recon_loss %5.2f, kld %5.2f \n'
                       'batch time %5.2f sec' % \
                       (epoch + 1, i,
                        elbo_loss.item(),
+                       recon_loss.item(),
+                       kld.item(),
                        work_time))
 
             ############ VALIDATION PART ############
@@ -195,7 +192,7 @@ class VaeFlow(nn.Module):
                 for i, batch_samples in enumerate(testloader):
                     batch_samples = batch_samples[0].to(self.device)
 
-                    elbo_loss_val = -1 * self.elbo(batch_samples)
+                    elbo_loss_val, recon_val_loss, kld_val_loss = self.elbo(batch_samples)
 
                     val_loss += elbo_loss_val.item() * batch_samples.size(dim=0)
 
