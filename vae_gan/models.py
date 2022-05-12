@@ -36,7 +36,7 @@ class Encoder(nn.Module):
             )
             in_channel = channels
 
-        #model.append(nn.AdaptiveMaxPool2d(output_size=1))
+        # model.append(nn.AdaptiveMaxPool2d(output_size=1))
         model.append(nn.Flatten())
 
         self.model = nn.Sequential(*model)
@@ -57,13 +57,13 @@ class Encoder(nn.Module):
 
         return mu, log_sigma
 
-    def sample(self, x, mu, log_sigma):
+    def sample(self, mu, log_sigma):
         """
         Sample from hidden conditional distribution q(z|x) using reparameterization trick
         :param x: (Tensor) [B x C x W x H]
         :return: (Tensor) [B x hidden_dim]
         """
-        eps = Variable(torch.randn(x.size(dim=0), self.hidden_dim)).to(self.device)
+        eps = Variable(torch.randn(mu.size(dim=0), self.hidden_dim)).to(self.device)
         hidden_sample = mu + torch.exp(0.5 * log_sigma) * eps
 
         return hidden_sample
@@ -192,31 +192,26 @@ class Discriminator(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-        self.prob = nn.Linear(in_features= self.conv_dims[-1],
+        self.prob = nn.Linear(in_features=self.conv_dims[-1],
                               out_features=1)
 
-    def forward(self, x):
+    def forward(self, x, is_loss=False):
         """
         Deciding true or fake object
         :param x: (Tensor) [B x C x W x H]
+        :param is_loss: (Bool) Checking for feature extractor
         :return: (Float)
-        """
-        conv_out = self.model(x)
-        prob = torch.sigmoid(self.prob(conv_out))
-
-        return prob
-
-    def conv_out(self, x):
-        """
-        Get output of last conv layer for construct VAE_GAN loss
-        :param x: (Tensor) [B x C x W x H]
-        :return: (Tensor) [B x C_last x W_last x H_last]
         """
         batch_size = x.size(dim=0)
 
         for i, layer in enumerate(self.model):
             x = layer(x)
-            if i == 2:
+            if is_loss and i == 1:
                 out = x.view(batch_size, -1)
+        prob = torch.sigmoid(self.prob(x))
 
-        return out
+        if is_loss:
+            return prob, out
+
+        else:
+            return prob

@@ -28,8 +28,8 @@ class VAE_GAN(nn.Module):
         self.decoder = Decoder(hidden_dim, conv_dims, device).to(device)
         self.discriminator = Discriminator(hidden_dim, conv_dims, device).to(device)
 
-        self.bce = nn.BCELoss(reduction='sum')
-        self.mse = nn.MSELoss(reduction='sum')
+        self.bce = nn.BCELoss(reduction='none')
+        self.mse = nn.MSELoss(reduction='none')
 
         self.rate = 1
         self.gamma = 1e-3
@@ -43,7 +43,7 @@ class VAE_GAN(nn.Module):
         :return: (Tensor) Similar as input object
         """
         mu, sigma = self.encoder(x)
-        latent_sample = self.encoder.sample(x, mu, sigma)
+        latent_sample = self.encoder.sample(mu, sigma)
         object_sample = self.decoder.forward(latent_sample)
         probab = self.discriminator(object_sample)
 
@@ -55,11 +55,12 @@ class VAE_GAN(nn.Module):
         :param x: (Tensor) [B x C x W x H]
         :return: (Float) Value of KL divergence
         """
-        loss = torch.sum(-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2))
+        loss = (-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2)) \
+            .view(mu.size(dim=0), -1).sum(dim=1).mean(dim=0)
 
         return loss
 
-    def gan_loss(self, x, x_de):
+    def gan_loss(self, dis_x, dis_x_latent, dis_x_noise):
         """
         Calculating gan_loss which is equal
 
@@ -74,27 +75,18 @@ class VAE_GAN(nn.Module):
         :param key: (Int) Binary value, 1 - train D, 0 - train G
         :return: (Float) Value of GAN loss
         """
-        batch_size = x.size(dim=0)
+        batch_size = dis_x.size(dim=0)
 
-        ones = torch.ones(size=(batch_size, 1)).to(self.device)
-        zeros = torch.zeros(size=(batch_size, 1)).to(self.device)
-        zeros_2 = torch.zeros(size=(2 * batch_size, 1)).to(self.device)
+        ones = torch.ones(size=(batch_size, 1)).to(device)
+        zeros = torch.zeros(size=(batch_size, 1)).to(device)
 
-        noise = Variable(torch.randn(size=(batch_size, self.hidden_dim))).to(self.device)
-        noise_2 = Variable(torch.randn(size=(2 * batch_size, self.hidden_dim))).to(self.device)
-
-        x_noise = self.decoder(noise)
-        x_noise_2 = self.decoder(noise_2)
-
-        disc_x, disc_x_de, disc_noise, disc_noise_2 = self.discriminator(x), self.discriminator(
-            x_de), self.discriminator(x_noise), self.discriminator(x_noise_2)
-
-        gan_loss_discr = self.bce(disc_x, ones) + self.bce(disc_x_de, zeros) + self.bce(disc_noise, zeros)
-        gan_loss_gen = self.bce(disc_x_de, zeros) + self.bce(disc_noise_2, zeros_2)
+        gan_loss_discr = (self.bce(dis_x, ones) + self.bce(dis_x_latent, zeros) + self.bce(dis_x_noise, zeros)).mean(
+            dim=0) / 3
+        gan_loss_gen = (self.bce(dis_x_latent, ones) + self.bce(dis_x_noise, ones)).mean(dim=0) / 2
 
         return gan_loss_discr, gan_loss_gen
 
-    def hidden_loss(self, x, x_de):
+    def hidden_loss(self, d_l_x, d_l_x_de):
         """
         Calculating reconstruction loss with following formula
         using reparameterizarion trick and M-C estimation
@@ -109,10 +101,9 @@ class VAE_GAN(nn.Module):
         :param x: (Tensor) [B x C x W x H]
         :return: (Float) Value of hidden discriminator loss
         """
-        d_l_x = self.discriminator.conv_out(x)
-        d_l_x_de = self.discriminator.conv_out(x_de)
+        b_size = d_l_x.size(dim=0)
 
-        hidden_loss = torch.sum(0.5 * (d_l_x - d_l_x_de) ** 2)
+        hidden_loss = 0.5 * self.mse(d_l_x, d_l_x_de).sum(dim=1).mean(dim=0)
 
         return hidden_loss
 
@@ -123,9 +114,22 @@ class VAE_GAN(nn.Module):
         :return: List(Float) Three losses
         """
         batch_size = x.size(dim=0)
-        mu, log_sigma = self.encoder(x)
 
-        x_de = self.decoder.forward(self.encoder.sample(x, mu, log_sigma))
+        ############ FORWARD PASS ############
+
+        mu, log_sigma = self.encoder(x)
+        z_latent = self.encoder.sample(mu, log_sigma)
+        x_latent = self.decoder(z_latent)
+
+        # Sampling from prior p(z)
+        z_noise = torch.randn(size=(batch_size, self.hidden_dim)).to(self.device)
+        x_noise = self.decoder(z_noise)
+
+        dis_x_latent, dis_feature_latent = self.discriminator(x_latent, is_loss=True)
+        dis_x_noise = self.discriminator(x_noise)
+        dis_x, dis_feature_real = self.discriminator(x, is_loss=True)
+
+        ############ LOSSES CALCULATION ############
 
         ########
         # Calculating encoder loss based on formula
@@ -133,25 +137,25 @@ class VAE_GAN(nn.Module):
         ########
 
         l_prior = self.prior_loss(mu, log_sigma)
-        l_l = self.hidden_loss(x, x_de)
+        l_l = self.hidden_loss(dis_feature_real, dis_feature_latent)
 
-        l_encoder = (5 * l_prior + l_l) / batch_size
+        l_encoder = l_prior + l_l
 
         ########
         # Calculating generator loss based on formula
         #      L_gan = -L_gan + L_l
         ########
 
-        l_gan_discr, l_gan_gen = self.gan_loss(x, x_de)
+        l_gan_discr, l_gan_gen = self.gan_loss(dis_x_latent, dis_x_noise, dis_x)
 
-        l_gen = (self.gamma * l_l - l_gan_gen) / batch_size
+        l_gen = (self.gamma * l_l + l_gan_gen)
 
         ########
         # Calculating generator loss based on formula
         #      L_dis = L_gan
         ########
 
-        l_dis = l_gan_discr / batch_size
+        l_dis = l_gan_discr
 
         return l_encoder, l_gen, l_dis
 

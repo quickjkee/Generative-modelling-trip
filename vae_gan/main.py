@@ -43,7 +43,7 @@ if __name__ == '__main__':
                              shuffle=True,
                              num_workers=1)
 
-    hidden_dim = 32
+    hidden_dim = 16
     data_dim = 32 * 32
 
     vae = VAE_GAN(Encoder=Encoder,
