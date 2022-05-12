@@ -25,7 +25,7 @@ class VaeFlow(nn.Module):
         self.hidden_dim = hidden_dim
         self.device = device
 
-        self.mse = nn.MSELoss(reduction='sum')
+        self.mse = nn.MSELoss(reduction='none')
 
     def forward(self, x):
         """
@@ -51,7 +51,7 @@ class VaeFlow(nn.Module):
         :param num: (Integer) Number of samples
         :return: (Tensor) [num x C x W x H]
         """
-        noise = torch.randn(size=(num, self.hidden_dim)).to(self.device)
+        noise = torch.randn(size=(num, self.hidden_dim)).to(device)
 
         flow_noise, _ = self.flow.flow(noise)
         decoded_noise = self.decoder(flow_noise)
@@ -85,7 +85,7 @@ class VaeFlow(nn.Module):
         kld = latent_posterior - prior - flow_det
 
         # ELBO loss
-        elbo_loss = 0.1 * recon_loss + 150 * kld
+        elbo_loss = recon_loss + 50 * kld
 
         return elbo_loss.mean(dim=0), recon_loss.mean(dim=0), kld.mean(dim=0)
 
@@ -100,7 +100,7 @@ class VaeFlow(nn.Module):
         :param x_decoded: (Tensor) [B x C x W x H] Reconstructed object
         :return: (Float)
         """
-        object_posterior = -self.mse(x, x_decoded)
+        object_posterior = -self.mse(x.view(x.shape[0], -1), x_decoded.view(x.shape[0], -1)).sum(dim=1)
 
         return object_posterior
 
