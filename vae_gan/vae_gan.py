@@ -52,7 +52,8 @@ class VAE_GAN(nn.Module):
     def prior_loss(self, mu, log_sigma):
         """
         Calculating KL-divergence between q(z|x) and N(0, I)
-        :param x: (Tensor) [B x C x W x H]
+        :param mu: (Tensor) [B x h_dim] Expectation of latent conditional distribution
+        :param log_sigma: (Tensor) [B x h_dim] Log variance of latent conditional distribution
         :return: (Float) Value of KL divergence
         """
         loss = (-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2)) \
@@ -71,20 +72,20 @@ class VAE_GAN(nn.Module):
         ## x_noise = G(noise) - decoded samples from noise p(z) = N(0, I)
         ## binary_ce - binary cross entropy
 
-        :param x: (Tensor) [B x C x W x H]
-        :param key: (Int) Binary value, 1 - train D, 0 - train G
+        :param dis_x: (Tensor) [B x 1] D(x) in previous notation
+        :param dis_x_latent: (Tensor) [B x 1] D(x_de)
+        :param dis_x_noise: (Tensor) [B x 1] D(x_noise)
         :return: (Float) Value of GAN loss
         """
         batch_size = dis_x.size(dim=0)
 
-        ones = torch.ones(size=(batch_size, 1)).to(device)
-        zeros = torch.zeros(size=(batch_size, 1)).to(device)
+        ones = torch.ones(size=(batch_size, 1)).to(self.device)
+        zeros = torch.zeros(size=(batch_size, 1)).to(self.device)
 
-        gan_loss_discr = (self.bce(dis_x, ones) + self.bce(dis_x_latent, zeros) + self.bce(dis_x_noise, zeros)).mean(
-            dim=0) / 3
+        gan_loss_dis = (self.bce(dis_x, ones) + self.bce(dis_x_latent, zeros) + self.bce(dis_x_noise, zeros)).mean(dim=0) / 3
         gan_loss_gen = (self.bce(dis_x_latent, ones) + self.bce(dis_x_noise, ones)).mean(dim=0) / 2
 
-        return gan_loss_discr, gan_loss_gen
+        return gan_loss_dis, gan_loss_gen
 
     def hidden_loss(self, d_l_x, d_l_x_de):
         """
@@ -98,10 +99,10 @@ class VAE_GAN(nn.Module):
         ## x_de = G(E(x)) - decoded samples from latent distribution q(z|x)
         ## E(x) means sample from q(z|x)
 
-        :param x: (Tensor) [B x C x W x H]
+        :param d_l_x: (Tensor) [B x 1] D_l(x) in previous notation
+        :param d_l_x_de: (Tensor) [B x 1] D_l(x_de)
         :return: (Float) Value of hidden discriminator loss
         """
-        b_size = d_l_x.size(dim=0)
 
         hidden_loss = 0.5 * self.mse(d_l_x, d_l_x_de).sum(dim=1).mean(dim=0)
 
@@ -146,23 +147,23 @@ class VAE_GAN(nn.Module):
         #      L_gan = -L_gan + L_l
         ########
 
-        l_gan_discr, l_gan_gen = self.gan_loss(dis_x_latent, dis_x_noise, dis_x)
+        l_gan_dis, l_gan_gen = self.gan_loss(dis_x_latent, dis_x_noise, dis_x)
 
         l_gen = (self.gamma * l_l + l_gan_gen)
 
         ########
-        # Calculating generator loss based on formula
+        # Calculating discriminator loss based on formula
         #      L_dis = L_gan
         ########
 
-        l_dis = l_gan_discr
+        l_dis = l_gan_dis
 
         return l_encoder, l_gen, l_dis
 
     def fit(self, trainloader, testloader, epochs):
         """
         Optimizing VAE/GAN model
-        :param trainlaoder: (Dataloader) Train dataloader
+        :param trainloader: (Dataloader) Train dataloader
         :param testloader: (Dataloader) Test dataloader
         :param epochs: (Int) Number of epochs
         :return: (dict) History of losses
