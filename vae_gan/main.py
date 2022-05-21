@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument("--b_size", type=int, default=16, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=128, help='size of input image')
+    parser.add_argument('--data_path', type=str, default='data', help='path of downloaded data')
     parser.add_argument('--h_dim', type=int, default=16, help='dimension of latent code')
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
@@ -25,46 +26,49 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    # Params
     conv_dims = opt.conv_dims
-    IMG_SIZE = opt.img_size
+    img_size = opt.img_size
+    hidden_dim = opt.h_dim
+    b_size = opt.b_size
+    n_epochs = opt.n_epochs
+    data_path = opt.data_path
 
     # ------------
     # Data preparation
     # ------------
 
     data_train = datasets.MNIST(
-        root='data',
+        root=data_path,
         train=True,
         transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((IMG_SIZE, IMG_SIZE)),
+                                      transforms.Resize((img_size, img_size)),
                                       transforms.Normalize((0.5,), (0.5,))]),
         download=True,
     )
 
     data_test = datasets.MNIST(
-        root='data',
+        root=data_path,
         train=False,
         transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((IMG_SIZE, IMG_SIZE)),
+                                      transforms.Resize((img_size, img_size)),
                                       transforms.Normalize((0.5,), (0.5,))]),
         download=True,
     )
 
     trainloaders = DataLoader(data_train,
-                              batch_size=opt.b_size,
+                              batch_size=b_size,
                               shuffle=True,
                               num_workers=1)
 
     testloaders = DataLoader(data_test,
-                             batch_size=opt.b_size,
+                             batch_size=b_size,
                              shuffle=True,
                              num_workers=1)
 
     # --------
     # Model preparation
     # -------
-
-    hidden_dim = opt.h_dim
 
     vae = VAE_GAN(Encoder=Encoder,
                   Decoder=Decoder,
@@ -79,7 +83,7 @@ if __name__ == '__main__':
 
     out = vae.fit(trainloader=trainloaders,
                   testloader=testloaders,
-                  epochs=opt.n_epochs)
+                  epochs=n_epochs)
 
     # --------
     # Validation part
@@ -90,7 +94,7 @@ if __name__ == '__main__':
         out = vae(sample[0].to(device))
         with torch.no_grad():
             for o in out:
-                img = torch.reshape(o.to('cpu'), (IMG_SIZE, IMG_SIZE))
+                img = torch.reshape(o.to('cpu'), (img_size, img_size))
                 plt.imshow(img)
                 plt.show()
         break
@@ -100,6 +104,6 @@ if __name__ == '__main__':
     objects = vae.decoder.sample(noise)
     with torch.no_grad():
         for obj in objects:
-            img = torch.reshape(obj.to('cpu'), (IMG_SIZE, IMG_SIZE))
+            img = torch.reshape(obj.to('cpu'), (img_size, img_size))
             plt.imshow(img)
             plt.show()
