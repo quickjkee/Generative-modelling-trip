@@ -5,10 +5,9 @@ from torch import nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, data_dim, hidden_dim, conv_dims, device):
+    def __init__(self, hidden_dim, conv_dims, device):
         super(Encoder, self).__init__()
 
-        self.data_dim = data_dim
         self.hidden_dim = hidden_dim
         self.device = device
 
@@ -55,10 +54,9 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, data_dim, hidden_dim, conv_dims, device):
+    def __init__(self, hidden_dim, conv_dims, device):
         super(Decoder, self).__init__()
 
-        self.data_dim = data_dim
         self.hidden_dim = hidden_dim
 
         self.device = device
@@ -66,7 +64,7 @@ class Decoder(nn.Module):
         self.conv_dims = conv_dims
         self.conv_dims.reverse()
 
-        self.input_decoder = nn.Linear(hidden_dim, self.conv_dims[0] * 4)
+        self.input_decoder = nn.Linear(hidden_dim, self.conv_dims[0] * 16)
 
         modules = []
         for i in range(len(self.conv_dims) - 1):
@@ -104,7 +102,7 @@ class Decoder(nn.Module):
 
         result = self.input_decoder(x)
         result = torch.flatten(result)
-        result = result.view(-1, self.conv_dims[0], 2, 2)
+        result = result.view(-1, self.conv_dims[0], 4, 4)
         result = self.decoder(result)
         result = self.final_layer(result)
 
@@ -120,14 +118,13 @@ class Decoder(nn.Module):
 
 
 class VAE(nn.Module):
-    def __init__(self, data_dim, hidden_dim, conv_dims, device):
+    def __init__(self, hidden_dim, conv_dims, device):
         super(VAE, self).__init__()
-        self.data_dim = data_dim
         self.hidden_dim = hidden_dim
         self.device = device
 
-        self.encoder = Encoder(data_dim, hidden_dim, conv_dims, device).to(device)
-        self.decoder = Decoder(data_dim, hidden_dim, conv_dims, device).to(device)
+        self.encoder = Encoder(hidden_dim, conv_dims, device).to(device)
+        self.decoder = Decoder(hidden_dim, conv_dims, device).to(device)
 
         self.mse = nn.MSELoss(reduction='sum')
         self.bce = nn.BCELoss(reduction='sum')
