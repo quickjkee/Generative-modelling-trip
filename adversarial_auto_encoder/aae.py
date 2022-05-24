@@ -5,8 +5,6 @@ import time
 
 from torch import nn
 
-IMG_SIZE = 32
-
 
 class AAE(nn.Module):
     ######
@@ -50,31 +48,6 @@ class AAE(nn.Module):
 
         return out
 
-    def get_contours(self, x):
-        """
-        :param x: (Tensor) [B x C x W x H]
-        :return: Tuple(Array) Tuple with cooridnates of all polygons
-        """
-        batch_size = x.size(dim=0)
-
-        array_x = np.uint8(x.cpu().detach().numpy())
-
-        edges = [cv2.Canny(x.reshape(IMG_SIZE, IMG_SIZE), 30, 50) for x in array_x]
-
-        X = []
-        Y = []
-        for edge in edges:
-            contours = cv2.findContours(edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0]
-            contours = np.concatenate(contours).reshape(-1, 2)
-
-            x = contours[:, 0]
-            y = contours[:, 1]
-
-            X.append(x)
-            Y.append(y)
-
-        return X, Y
-
     def recon_loss(self, x, recon_object):
         """
         Calculating reconstruction loss based on formula
@@ -85,18 +58,9 @@ class AAE(nn.Module):
         :param recon_object: (Tensor) [B x C x W x H]
         :return: (Float)
         """
-        batch_size = x.size(dim=0)
+        total_loss = self.mse(recon_object, x)
 
-        x_contours, y_contours = self.get_contours(x)
-
-        recon_loss = (recon_object - x) ** 2
-
-        for i in range(batch_size):
-            recon_loss[i, :, y_contours[i], x_contours[i]] *= 15
-
-        weighted_loss = torch.mean(recon_loss)
-
-        return weighted_loss
+        return total_loss
 
     def encoder_reg(self, d_z):
         """

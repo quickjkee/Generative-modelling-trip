@@ -1,7 +1,6 @@
 import torch
 
 from torch import nn
-from torch.autograd import Variable
 
 
 class Encoder(nn.Module):
@@ -75,7 +74,7 @@ class Decoder(nn.Module):
         conv_dims.reverse()  # Reversing dims to create decoder
         self.conv_dims = conv_dims  # It is possible to decrease number of parameters for prevent overfitting
 
-        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 16)
+        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 4)
 
         """
         Each model`s layer will upscale input image size by two
@@ -114,7 +113,7 @@ class Decoder(nn.Module):
                       kernel_size=3,
                       padding=1
                       ),
-            nn.Tanh()
+            nn.Sigmoid()
         )
 
     def forward(self, z):
@@ -123,7 +122,7 @@ class Decoder(nn.Module):
         :param z: (Tensor) [B x hidden_dim]
         :return: (Tensor) [B x C x W x H]
         """
-        input = self.input_layer(z).view(-1, self.conv_dims[0], 4, 4)
+        input = self.input_layer(z).view(-1, self.conv_dims[0], 2, 2)
         out_decoder = self.model(input)
         out_final = self.final_layer(out_decoder)
 
@@ -135,7 +134,7 @@ class Decoder(nn.Module):
         :param noise: (Tensor) [B x hidden_dim]
         :return: (Tensor) [B x C x W x H]
         """
-        assert noise.size(dim=0) == self.hidden_dim, 'Size of noise should equal hidden dimension'
+        assert noise.size(dim=0) != self.hidden_dim, 'Size of noise should equal hidden dimension'
         object_sample = self.forward(noise)
 
         return object_sample
@@ -166,7 +165,7 @@ class Discriminator(nn.Module):
                 nn.Sequential(
                     nn.Linear(in_features=in_dim,
                               out_features=in_dim * 4),
-                    nn.BatchNorm1d(in_dim * 4),
+                    nn.Dropout(p=0.2),
                     nn.ReLU())
             )
             in_dim = in_dim * 4
@@ -176,7 +175,7 @@ class Discriminator(nn.Module):
                 nn.Sequential(
                     nn.Linear(in_features=in_dim,
                               out_features=int(in_dim / 4)),
-                    nn.BatchNorm1d(int(in_dim / 4)),
+                    nn.Dropout(p=0.2),
                     nn.ReLU())
             )
             in_dim = int(in_dim / 4)
