@@ -104,7 +104,9 @@ class GAN(torch.nn.Module):
             for i, (data, labels) in enumerate(dataloader):
                 #########
                 # Discriminator train stage
+
                 # minimize -1 * {log(D(x)) + log(1 - D(G(z)))}
+
                 # it equivalent to minimize sum of two binary cross entropy
                 # first : - {y_true * log(y = 1 | x) + (1 - y_true) * (1 - log(y = 1 | x))} = - { 1 * log(y = 1 | x) }
                 # second: - {y_fake * log(y = 1 | x) + (1 - y_fake) * (1 - log(y = 1 | x))} =
@@ -129,7 +131,9 @@ class GAN(torch.nn.Module):
 
                 #########
                 # Generator train stage
+
                 # minimize log(1 - D(G(z)) ( minimize(-log(D(G(z)) )
+
                 # it equivalent to maximize binary cross entropy
                 # - {y_fake * log(y = 1 | x) + (1 - y_fake) * (1 - log(y = 1 | x))} =
                 # = - { (1 - y_fake) * (1 - log(y = 1 | x)) }
