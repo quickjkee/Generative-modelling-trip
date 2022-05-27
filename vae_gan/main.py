@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
                         default=[32, 32, 64, 128, 256])
+    parser.add_argument('--n_valid', type=int, default=150, help='number of samples from noise')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -33,6 +34,7 @@ if __name__ == '__main__':
     b_size = opt.b_size
     n_epochs = opt.n_epochs
     data_path = opt.data_path
+    n_valid = opt.n_valid
 
     # ------------
     # Data preparation
@@ -89,21 +91,12 @@ if __name__ == '__main__':
     # Validation part
     # -------
 
-    # Reconstruction
-    for sample in trainloaders:
-        out = vae(sample[0].to(device))
-        with torch.no_grad():
-            for o in out:
-                img = torch.reshape(o.to('cpu'), (img_size, img_size))
-                plt.imshow(img)
-                plt.show()
-        break
+    path = 'data/Sampling'
 
     # Sampling from noise
-    noise = torch.randn(150, hidden_dim).to(device)
+    noise = torch.randn(n_valid, hidden_dim).to(device)
     objects = vae.decoder.sample(noise)
     with torch.no_grad():
-        for obj in objects:
+        for i, obj in enumerate(objects):
             img = torch.reshape(obj.to('cpu'), (img_size, img_size))
-            plt.imshow(img)
-            plt.show()
+            plt.imsave("{}/{}.png".format(path, i), img, cmap="gray_r")
