@@ -93,7 +93,7 @@ class Decoder(nn.Module):
         conv_dims.reverse()  # Reversing dims to create decoder
         self.conv_dims = conv_dims  # It is possible to decrease number of parameters for prevent overfitting
 
-        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 16)
+        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 4)
 
         """
         Each model`s layer will upscale input image size by two
@@ -141,8 +141,18 @@ class Decoder(nn.Module):
         :param z: (Tensor) [B x hidden_dim]
         :return: (Tensor) [B x C x W x H]
         """
-        input = self.input_layer(z).view(-1, self.conv_dims[0], 4, 4)
+        input = self.input_layer(z).view(-1, self.conv_dims[0], 2, 2)
         out_decoder = self.model(input)
         out_final = self.final_layer(out_decoder)
 
         return out_final
+
+    def sample(self, noise):
+        """
+        Decoding random noise to input like object
+        :param noise:
+        :return:
+        """
+        object_sample = self.forward(noise)
+
+        return object_sample

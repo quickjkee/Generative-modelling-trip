@@ -36,14 +36,14 @@ class Encoder(nn.Module):
             )
             in_channel = channels
 
-        # model.append(nn.AdaptiveMaxPool2d(output_size=1))
+        model.append(nn.AdaptiveMaxPool2d(output_size=1))
         model.append(nn.Flatten())
 
         self.model = nn.Sequential(*model)
 
-        self.mu = nn.Linear(in_features=9 * self.conv_dims[-1],
+        self.mu = nn.Linear(in_features=self.conv_dims[-1],
                             out_features=self.hidden_dim)
-        self.log_sigma = nn.Linear(in_features=9 * self.conv_dims[-1],
+        self.log_sigma = nn.Linear(in_features=self.conv_dims[-1],
                                    out_features=self.hidden_dim)
 
     def forward(self, x):
@@ -89,7 +89,7 @@ class Decoder(nn.Module):
         conv_dims.reverse()  # Reversing dims to create decoder
         self.conv_dims = conv_dims  # Decreasing number of parameters for prevent overfitting
 
-        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 16)
+        self.input_layer = nn.Linear(self.hidden_dim, self.conv_dims[0] * 4)
 
         """
         Each model`s layer will upscale input image size by two
@@ -137,7 +137,7 @@ class Decoder(nn.Module):
         :param z: (Tensor) [B x hidden_dim]
         :return: (Tensor) [B x C x W x H]
         """
-        input = self.input_layer(z).view(-1, self.conv_dims[0], 4, 4)
+        input = self.input_layer(z).view(-1, self.conv_dims[0], 2, 2)
         out_decoder = self.model(input)
         out_final = self.final_layer(out_decoder)
 

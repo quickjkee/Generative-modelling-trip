@@ -1,14 +1,15 @@
 import torch
 import argparse
+import matplotlib.pyplot as plt
+import os
 
-from torchvision import datasets
-from torchvision.transforms import ToTensor, Normalize
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from planar_flow import PlanarFlow
 from vae_flows import VaeFlow
 from encoder_decoder import Encoder, Decoder
+from dataset import CellTrapSet, train_test_split
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -17,11 +18,12 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=128, help='size of input image')
     parser.add_argument('--data_path', type=str, default='data', help='path of downloaded data')
-    parser.add_argument('--h_dim', type=int, default=16, help='dimension of latent code')
+    parser.add_argument('--h_dim', type=int, default=32, help='dimension of latent code')
     parser.add_argument('--flow_size', type=int, default=64, help='len of normalizing flow')
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
-                        default=[16, 32, 64, 128, 256])
+                        default=[32, 64, 128, 256, 256, 512])
+    parser.add_argument('--n_valid', type=int, default=10000, help='number of samples from noise')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -34,38 +36,27 @@ if __name__ == '__main__':
     n_epochs = opt.n_epochs
     data_path = opt.data_path
     flow_size = opt.flow_size
+    n_valid = opt.n_valid
 
     # ------------
     # Data preparation
     # ------------
 
-    data_train = datasets.MNIST(
-        root=data_path,
-        train=True,
-        transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((img_size, img_size)),
-                                      transforms.Normalize((0.5,), (0.5,))]),
-        download=True,
-    )
+    trans = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize([img_size, img_size]),
+        transforms.Normalize((0.5,), (0.5,))])
 
-    data_test = datasets.MNIST(
-        root=data_path,
-        train=False,
-        transform=transforms.Compose([ToTensor(),
-                                      transforms.Resize((img_size, img_size)),
-                                      transforms.Normalize((0.5,), (0.5,))]),
-        download=True,
-    )
+    micro_path = data_path + 'microfluidic/'
 
-    trainloaders = DataLoader(data_train,
-                              batch_size=b_size,
-                              shuffle=True,
-                              num_workers=1)
+    names = os.listdir(micro_path + 'images')
+    train_names, test_names = train_test_split(names)
 
-    testloaders = DataLoader(data_test,
-                             batch_size=b_size,
-                             shuffle=True,
-                             num_workers=1)
+    trainset = CellTrapSet(train_names, micro_path, transforms=trans)
+    testset = CellTrapSet(test_names, micro_path, transforms=trans)
+
+    trainloaders = DataLoader(trainset, b_size, shuffle=True)
+    testloaders = DataLoader(testset, b_size, shuffle=True)
 
     # --------
     # Model preparation
@@ -103,4 +94,24 @@ if __name__ == '__main__':
 
     vae_flow.fit(trainloader=trainloaders,
                  testloader=testloaders,
-                 epochs=10)
+                 epochs=n_epochs)
+
+    # --------
+    # Validation part
+    # -------
+
+    dir = data_path + 'sampling/vae_flows'
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+    path = data_path + 'sampling/vae_flows'
+
+    i = 0
+    for _ in range(int(n_valid / b_size)):
+        noise = torch.randn(b_size, hidden_dim).to(device)
+        objects = vae_flow.decoder.sample(noise)
+        with torch.no_grad():
+            for obj in objects:
+                img = torch.reshape(obj.to('cpu'), (img_size, img_size))
+                plt.imsave("{}/{}.png".format(path, i), img, cmap="gray_r")
+                i += 1

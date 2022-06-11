@@ -41,12 +41,11 @@ class Encoder(nn.Module):
 
         return mu, log_sigma
 
-    def sample(self, x):
+    def sample(self, mu, log_sigma):
         # Latent representation of input object
         assert self.mu is not None, 'Latent distribution is not prepared'
 
-        eps = torch.randn(x.size(dim=0), self.hidden_dim).to(self.device)  # Samples from standard normal distribution
-        mu, log_sigma = self.forward(x)
+        eps = torch.randn(mu.size(dim=0), self.hidden_dim).to(self.device)  # Samples from standard normal distribution
 
         latent_samples = torch.exp(0.5 * log_sigma) * eps + mu
 
@@ -64,7 +63,7 @@ class Decoder(nn.Module):
         self.conv_dims = conv_dims
         self.conv_dims.reverse()
 
-        self.input_decoder = nn.Linear(hidden_dim, self.conv_dims[0] * 16)
+        self.input_decoder = nn.Linear(hidden_dim, self.conv_dims[0] * 4)
 
         modules = []
         for i in range(len(self.conv_dims) - 1):
@@ -93,7 +92,7 @@ class Decoder(nn.Module):
             nn.ReLU(),
             nn.Conv2d(self.conv_dims[-1], out_channels=1,
                       kernel_size=3, padding=1),
-            nn.Sigmoid())
+            nn.Tanh())
 
         self.model = None
 
@@ -102,7 +101,7 @@ class Decoder(nn.Module):
 
         result = self.input_decoder(x)
         result = torch.flatten(result)
-        result = result.view(-1, self.conv_dims[0], 4, 4)
+        result = result.view(-1, self.conv_dims[0], 2, 2)
         result = self.decoder(result)
         result = self.final_layer(result)
 
@@ -132,36 +131,43 @@ class VAE(nn.Module):
     def __call__(self, x):
         # Getting a similar object as input
 
-        latent_sample = self.encoder.sample(x)
+        mu, log_sigma = self.encoder(x)
+        latent_sample = self.encoder.sample(mu, log_sigma)
         object_sample = self.decoder.sample(latent_sample)
 
         return object_sample
 
-    def kl_divergence(self, x):
+    def kl_divergence(self, mu, log_sigma):
         # Calculation KL divergence between KL(Q(z|x) || P(z))
-        mu, log_sigma = self.encoder(x)
         loss = (-0.5 * (1 + log_sigma - torch.exp(log_sigma) - mu ** 2).sum(dim=1)).mean(dim=0)
 
         return loss
 
-    def expectation(self, x):
+    def expectation(self, x, decoder_output):
         # Calculation of |E_eps~N(0,I) {log p(x|eps*sigma + mu)}
         batch_size = x.size(dim=0)
 
-        latent_sample = self.encoder.sample(x)
-        decoder_output = self.decoder(latent_sample)
-
-        loss = self.bce(decoder_output, x) / batch_size
+        loss = self.mse(decoder_output, x) / batch_size
 
         return loss
 
     def loss_vae(self, x):
         # ELBO loss representation
-        batch_size = x.size(dim=0)
 
-        vae_loss = 1 / (batch_size) * (self.kl_divergence(x) + self.expectation(x))
+        ############ FORWARD PASS ############
 
-        return vae_loss
+        mu, log_sigma = self.encoder(x)
+        latent_sample = self.encoder.sample(mu, log_sigma)
+        decoder_output = self.decoder(latent_sample)
+
+        ############ LOSSES CALCULATION ############
+
+        expect = self.expectation(x, decoder_output)
+        kl = self.kl_divergence(mu, log_sigma)
+
+        vae_loss = 8 * kl + expect
+
+        return vae_loss, expect, kl
 
     def fit(self, trainloader, testloader, epochs):
         encoder_params = list(self.encoder.parameters())
@@ -187,12 +193,20 @@ class VAE(nn.Module):
 
                 optimizer.zero_grad()
 
-                loss = self.loss_vae(batch_samples)
+                loss, expect, kl = self.loss_vae(batch_samples)
                 loss.backward()
 
                 optimizer.step()
 
                 train_loss += loss.item() * batch_samples.size(0)
+
+                work_time = time.time() - start_time
+
+                print('Epoch/batch %3d/%3d \n'
+                      'expectation %5.5f, kl_div %5.5f \n'
+                      'batch time %5.2f sec' % \
+                      (epoch + 1, i,
+                       expect.item(), kl.item(), work_time))
 
             train_loss = train_loss / len(trainloader.dataset)
 
@@ -204,7 +218,7 @@ class VAE(nn.Module):
                 for i, batch_samples in enumerate(testloader):
                     batch_samples = batch_samples[0].to(self.device)
 
-                    loss = self.loss_vae(batch_samples)
+                    loss, _, _ = self.loss_vae(batch_samples)
                     val_loss += loss.item() * batch_samples.size(0)
 
             val_loss = val_loss / len(testloader.dataset)
