@@ -17,12 +17,23 @@ class WGAN(nn.Module):
         """
         super(WGAN, self).__init__()
 
+        self._clipping_param = 0.01
+
         self.critic = critic
         self.generator = generator
 
         self.h_dim = h_dim
 
         self.device = device
+
+    def _clipp(self):
+        """
+        Clipping the parameters of the critic
+        :return: None
+        """
+        params = self.critic.parameters()
+        for p in params:
+            p.data.clamp_(-self._clipping_param, self._clipping_param)
 
     def _wasserstein_approximation(self, real_critic, fake_critic):
         """
@@ -41,7 +52,7 @@ class WGAN(nn.Module):
         """
 
         # We put minus because the optimizer working in minimizing mode as standard
-        approx = -(torch.mean(real_critic, dim=0) - torch.mean(fake_critic, dim=0))
+        approx = -torch.mean(real_critic, dim=0) + torch.mean(fake_critic, dim=0)
 
         return approx
 
@@ -75,7 +86,7 @@ class WGAN(nn.Module):
 
         # Calculating critic for fake samples
         fake_samples = self.generator.forward(z)
-        fake_critic = self.critic.forward(fake_samples)
+        fake_critic = self.critic.forward(fake_samples).view(-1)
 
         #######################
         # LOSS CALCULATION
@@ -98,7 +109,7 @@ class WGAN(nn.Module):
 
         # Calculating critic for fake samples
         fake_samples = self.generator.forward(z)
-        fake_critic = self.critic.forward(fake_samples)
+        fake_critic = self.critic.forward(fake_samples).view(-1)
 
         #######################
         # LOSS CALCULATION
@@ -128,11 +139,11 @@ class WGAN(nn.Module):
         """
         generator_params = list(self.generator.parameters())
         critic_params = list(self.critic.parameters())
-        params = generator_params + critic_params
 
-        opt = torch.optim.RMSprop(lr=5e-5, params=params)
+        opt_critic = torch.optim.RMSprop(lr=5e-4, params=critic_params)
+        opt_generator = torch.optim.RMSprop(lr=5e-4, params=generator_params)
 
-        print(f'opt={type(opt).__name__}, epochs={n_epochs}, device={self.device}')
+        print(f'opt={type(opt_generator).__name__}, epochs={n_epochs}, device={self.device}')
 
         for epoch in range(n_epochs):
 
@@ -146,20 +157,23 @@ class WGAN(nn.Module):
 
                 critic_error = 0.0
                 for _ in range(5):
-                    opt.zero_grad()
+                    opt_critic.zero_grad()
 
                     # Real samples
                     batch_sample = next(iter(trainloader))[0].to(self.device)
 
                     # Fake samples
-                    latent_sample = torch.randn(b_size, self.h_dim).to(self.device)
+                    latent_sample = torch.randn((b_size, self.h_dim, 1, 1)).to(self.device)
 
                     # Loss calculation
                     critic_loss = self._critic_pass(batch_sample, latent_sample)
 
                     # Backward and optimizer step
                     critic_loss.backward(inputs=critic_params)
-                    opt.step()
+                    opt_critic.step()
+
+                    # Clipping step
+                    self._clipp()
 
                     critic_error += critic_loss.item()
 
@@ -167,22 +181,22 @@ class WGAN(nn.Module):
                 # GENERATOR TRAINING
                 #######################
 
-                opt.zero_grad()
+                opt_generator.zero_grad()
 
                 # Fake samples
-                latent_sample = torch.randn(b_size, self.h_dim).to(self.device)
+                latent_sample = torch.randn((b_size, self.h_dim, 1, 1)).to(self.device)
 
                 # Loss calculation
                 gen_loss = self._generator_pass(latent_sample)
 
                 # Backward and optimizer step
-                gen_loss.backward(inputs=generator_params)
-                opt.step()
+                gen_loss.backward()
+                opt_generator.step()
 
                 end_time = time.time() - start_time
 
                 print(f'[Epoch {epoch}/{n_epochs}][Batch {i}/{len(trainloader)}] \n'
-                      f'Generator loss {round(gen_loss.item(), 3)} \n'
-                      f'Critic loss {round(critic_error / 5, 3)} \n'
+                      f'Generator loss {round(gen_loss.item(), 6)} \n'
+                      f'Critic loss {round(critic_error / 5, 6)} \n'
                       f'Work time {round(end_time, 3)} sec \n'
                       )

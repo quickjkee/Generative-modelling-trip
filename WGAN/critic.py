@@ -20,6 +20,20 @@ class Critic(nn.Module):
         self.n_channels = n_channels
 
         self.model = self._model_create()
+        self._weights_init()
+
+    def _weights_init(self):
+        """
+        Model parameters initializing
+        :return: None
+        """
+        classname = self.model.__class__.__name__
+
+        if classname.find('Conv') != -1:
+            nn.init.normal_(self.model.weight.data, 0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            nn.init.normal_(self.model.weight.data, 1.0, 0.02)
+            nn.init.constant_(self.model.bias.data, 0)
 
     def _model_create(self):
         """
@@ -34,20 +48,24 @@ class Critic(nn.Module):
                 nn.Sequential(
                     nn.Conv2d(in_channels=in_channels,
                               out_channels=dim,
-                              kernel_size=3,
+                              kernel_size=4,
                               stride=2,
                               padding=1),
                     nn.BatchNorm2d(num_features=dim),
-                    nn.ReLU()
+                    nn.LeakyReLU(0.2, inplace=True),
                 )
             )
             in_channels = dim
 
-        model.append(nn.AdaptiveMaxPool2d(output_size=1))
-        model.append(nn.Flatten())
-        model.append(nn.Linear(in_features=self.conv_dims[-1],
-                               out_features=1))
-
+        model.append(
+            nn.Sequential(
+                nn.Conv2d(in_channels=self.conv_dims[-1],
+                          out_channels=1,
+                          kernel_size=4,
+                          stride=2,
+                          padding=1),
+            )
+        )
         model = nn.Sequential(*model)
 
         return model

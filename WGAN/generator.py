@@ -35,6 +35,20 @@ class Generator(nn.Module):
         self.n_channels = n_channels
 
         self.model = self._model_create()
+        self._weights_init()
+
+    def _weights_init(self):
+        """
+        Model parameters initializing
+        :return: None
+        """
+        classname = self.model.__class__.__name__
+
+        if classname.find('Conv') != -1:
+            nn.init.normal_(self.model.weight.data, 0.0, 0.02)
+        elif classname.find('BatchNorm') != -1:
+            nn.init.normal_(self.model.weight.data, 1.0, 0.02)
+            nn.init.constant_(self.model.bias.data, 0)
 
     def _model_create(self):
         """
@@ -42,30 +56,27 @@ class Generator(nn.Module):
         :return: (Module), pytorch model
         """
         model = []
-        in_channels = 1
-
-        model.append(nn.Linear(in_features=self.h_dim,
-                               out_features=4))
-        model.append(View(shape=(-1, 1, 2, 2)))
+        in_channels = self.h_dim
 
         for i in range(len(self.conv_dims)):
             model.append(
                 nn.Sequential(
-                    nn.Upsample(scale_factor=2),
-                    nn.Conv2d(in_channels=in_channels,
-                              out_channels=self.conv_dims[i],
-                              kernel_size=3,
-                              padding='same'),
+                    nn.ConvTranspose2d(in_channels=in_channels,
+                                       out_channels=self.conv_dims[i],
+                                       kernel_size=4,
+                                       stride=2,
+                                       padding=1),
                     nn.BatchNorm2d(num_features=self.conv_dims[i]),
-                    nn.ReLU()
+                    nn.ReLU(True)
                 )
             )
             in_channels = self.conv_dims[i]
 
-        model.append(nn.Conv2d(in_channels=self.conv_dims[-1],
-                               out_channels=self.n_channels,
-                               kernel_size=3,
-                               padding='same'))
+        model.append(nn.ConvTranspose2d(in_channels=self.conv_dims[-1],
+                                        out_channels=self.n_channels,
+                                        kernel_size=4,
+                                        stride=2,
+                                        padding=1))
         model.append(nn.Tanh())
 
         model = nn.Sequential(*model)
@@ -78,9 +89,9 @@ class Generator(nn.Module):
         :param x: (Tensor), [b_size x h_dim]
         :return: (Tensor), [b_size x C x W x H]
         """
-        if len(x.size()) != 2 or x.size()[-1] != self.h_dim:
+        if len(x.size()) != 4 or x.size()[1] != self.h_dim:
             raise ValueError(
-                'ValueError exception thrown, dimension of input have a different form from this [b_size x h_dim]')
+                'ValueError exception thrown, dimension of input have a different form from this [b_size x h_dim x 1 x 1]')
 
         samples = self.model(x)
         return samples
