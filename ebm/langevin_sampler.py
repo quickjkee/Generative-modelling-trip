@@ -7,7 +7,6 @@ import numpy as np
 class Sampler:
     """
     Realization of the sampler from unnormalized distribution based on Langevin Markov Chain
-
     """
 
     def __init__(self, n_samples, n_steps, step_size, device, img_shape=None):
@@ -56,14 +55,16 @@ class Sampler:
         # Using Langevin dynamics n_steps times
         for _ in range(self.n_steps):
             noise = tensor_noise.normal_(mean=0, std=0.005).to(self.device)
+            inp_img.data.add_(noise.data)
+            inp_img.data.clamp_(min=-1.0, max=1.0)
 
             # Part 1. Gradient calculation
-            out = e_model.forward(inp_img)
+            out = -e_model(inp_img)
             out.sum().backward()
+            inp_img.grad.data.clamp_(-0.03, 0.03)
 
             # Part 2. Images update
-            inp_img.data.add_(-1 * self._step_size ** 2 / 2 * inp_img.grad.data)
-            inp_img.data.add_(self._step_size * noise.data)
+            inp_img.data.add_(-self._step_size * inp_img.grad.data)
             inp_img.grad.zero_()
             inp_img.data.clamp_(min=-1.0, max=1.0)
 

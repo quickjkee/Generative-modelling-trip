@@ -41,8 +41,8 @@ class EBM(nn.Module):
         :return: (Float), loss value
         """
 
-        contrastive_div = out_real.mean() - out_model.mean()
-        regularization = (out_real**2 + out_model**2).mean()
+        contrastive_div = -out_real.mean() + out_model.mean()
+        regularization = (out_real ** 2 + out_model ** 2).mean()
 
         loss = contrastive_div + self.alpha * regularization
 

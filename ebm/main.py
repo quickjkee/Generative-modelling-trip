@@ -14,8 +14,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=10, help='number of epochs of training')
-    parser.add_argument("--n_steps", type=int, default=80, help='number of steps in Leapfrog method')
-    parser.add_argument("--step_size", type=int, default=33, help='step size in Leapfrog method')
+    parser.add_argument("--n_steps", type=int, default=100, help='number of steps in Leapfrog method')
+    parser.add_argument("--step_size", type=int, default=0.1, help='step size in Leapfrog method')
     parser.add_argument("--n_channels", type=int, default=1, help='number of channels in image')
     parser.add_argument("--b_size", type=int, default=16, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=5e-5, help='learning rate')
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
-                        default=[64, 128, 128, 256, 512, 1024])
+                        default=[8, 16, 32, 32, 64, 128])
     parser.add_argument('--n_valid', type=int, default=10000, help='number of samples for validation after training')
     opt = parser.parse_args()
 
@@ -70,6 +70,7 @@ if __name__ == '__main__':
     sampler = Sampler(n_samples=b_size,
                       n_steps=n_steps,
                       step_size=step_size,
+                      img_shape=(n_channels, img_size, img_size),
                       device=device)
 
     energy = Energy(conv_dims=conv_dims,

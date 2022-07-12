@@ -1,12 +1,14 @@
 import torch.nn as nn
 
+class Swish(nn.Module):
+
+    def forward(self, x):
+        return x * torch.sigmoid(x)
 
 class Energy(nn.Module):
     """
     Approximation of the energy in Boltzmann distribution using CNN
-
         P = e^(E(X)) / Z - energy based model (Boltzmann distribution)
-
     Here we approximate E(X)
     """
 
@@ -34,12 +36,12 @@ class Energy(nn.Module):
         for conv in self.conv_dims:
             model.append(
                 nn.Sequential(
-                    nn.utils.spectral_norm(nn.Conv2d(in_channels=in_channels,
-                                                     out_channels=conv,
-                                                     kernel_size=3,
-                                                     stride=2,
-                                                     padding=1)),
-                    nn.LeakyReLU()
+                    nn.Conv2d(in_channels=in_channels,
+                              out_channels=conv,
+                              kernel_size=3,
+                              stride=2,
+                              padding=1),
+                    Swish(),
                 )
             )
             in_channels = conv
@@ -47,10 +49,10 @@ class Energy(nn.Module):
         # GlobalMaxPooling and one fully connected layer
         model.append(
             nn.Sequential(
-                nn.AdaptiveMaxPool2d(output_size=(1, 1)),
+                nn.AdaptiveMaxPool2d(output_size=1),
                 nn.Flatten(),
                 nn.Linear(self.conv_dims[-1], 128),
-                nn.ReLU(),
+                Swish(),
                 nn.Linear(128, 1)
             )
         )
