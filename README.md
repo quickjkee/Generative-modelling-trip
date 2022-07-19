@@ -1,7 +1,7 @@
 ## Welcome to the generative modelling trip
 
 Here you can find some useful information (i hope so) to embark on a journey
-through generative models (im still in this journey). You can find my _theoretical notes_
+through generative models. You can find _theoretical notes_ about
 generative models and code for the _realization_.
 
 > How to run?
@@ -30,7 +30,6 @@ docker build dockerfiles/Dockerfile
 - Code
     - [Put](./ebm/mle_mcmc). Realization of the Maximum Likelihood training with MCMC
     - in progress. Realization of the Noise Contrastive Estimation
-    - in progress. Realization of the Denoising Score Matching
 - Results \
  in progress
 
@@ -51,3 +50,57 @@ docker build dockerfiles/Dockerfile
 ---------------
 
 ### __Variational Auto Encoder with Normalizing flow__
+- Theory
+  - [Put](./vae_flows/theory/vae_flows_theory.pdf).  My short notes about combination of normalizing flows with VAE (motivation and derivation)
+  - [Must read](https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial11/NF_image_modeling.html). Tutorial about normalizing flows 
+  - [Must read](https://arxiv.org/pdf/1505.05770.pdf). Original paper
+- Code
+  - [Put](./vae_flows). Realization of planar flows and VAE with normalizing flows
+- Results \
+ in progress
+
+----------------
+
+### __Generative Adversarial Network__
+- Theory
+  - in progress.  My notes about GAN (some thoughts about instability, view on loss function)
+  - [Must read]. A lot of stuff on the internet.
+  - [Must read](https://arxiv.org/abs/1406.2661). Original paper
+- Code
+  - [Put](./GAN). Realization of GAN
+- Results \
+ in progress
+----------------
+
+### __Wasserstein GAN__
+- Theory
+  - [Put](./WGAN/theory/WGAN.pdf).  My notes about WGAN (discussions about the main problem of the GAN)
+  - [Must read](https://www.alexirpan.com/2017/02/22/wasserstein-gan.html). Tutorial about WGAN
+  - [Must watch](https://www.youtube.com/watch?v=ymWDGzpQdls&t=692s). Great explanation of Wasserstein distance (Earth Mover's Distance)
+  - [Must read](https://arxiv.org/abs/1701.07875?context=cs). Original paper
+- Code
+  - [Put](./GAN). Realization of WGAN
+- Results \
+ in progress
+
+--------------
+
+### __VAE GAN__
+- Theory
+  - [Put](./vae_gan/theory/VaeGan_theory.pdf).  My notes about VAE GAN
+  - [Must read](https://arxiv.org/abs/1512.09300?context=cs.CV). Original paper
+- Code
+  - [Put](./vae_gan). Realization of VAE GAN
+- Results \
+ in progress
+
+------------
+
+### __Adversarial Auto Encoder__
+- Theory
+  - [Put](./adversarial_auto_encoder/theory/AAE_some_theory.pdf).  My notes about AAE
+  - [Must read](https://arxiv.org/abs/1511.05644). Original paper
+- Code
+  - [Put](./vae_gan). Realization of AAE
+- Results \
+ in progress
