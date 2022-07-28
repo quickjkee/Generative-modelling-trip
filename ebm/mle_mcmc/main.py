@@ -17,13 +17,13 @@ if __name__ == '__main__':
     parser.add_argument("--n_steps", type=int, default=100, help='number of steps in Leapfrog method')
     parser.add_argument("--step_size", type=int, default=0.1, help='step size in Leapfrog method')
     parser.add_argument("--n_channels", type=int, default=1, help='number of channels in image')
-    parser.add_argument("--b_size", type=int, default=16, help='size of the mini batch')
+    parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=5e-5, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
-    parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
+    parser.add_argument('--data_path', type=str, default='../../data', help='path of downloaded data')
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
-                        default=[8, 16, 32, 32, 64, 128])
+                        default=[16, 32, 64, 128, 512, 512])
     parser.add_argument('--n_valid', type=int, default=10000, help='number of samples for validation after training')
     opt = parser.parse_args()
 
@@ -92,11 +92,11 @@ if __name__ == '__main__':
     # Validation part
     # -------
 
-    dir = data_path + 'sampling/ebm'
+    dir = f'{data_path}/sampling/ebm'
     if not os.path.exists(dir):
         os.mkdir(dir)
 
-    path = data_path + 'sampling/ebm'
+    path = f'{data_path}/sampling/ebm'
 
     i = 0
     for _ in range(int(n_valid / b_size)):

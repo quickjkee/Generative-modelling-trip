@@ -15,14 +15,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=10, help='number of epochs of training')
     parser.add_argument("--n_channels", type=int, default=1, help='number of channels in image')
-    parser.add_argument("--b_size", type=int, default=16, help='size of the mini batch')
+    parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=5e-5, help='learning rate')
-    parser.add_argument('--img_size', type=float, default=128, help='size of input image')
+    parser.add_argument('--img_size', type=float, default=32, help='size of input image')
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
     parser.add_argument('--h_dim', type=int, default=32, help='dimension of latent code')
     parser.add_argument('-conv_dims', '--conv_dims', nargs='+', type=int,
                         help='list of channels for encoder/decoder creation',
-                        default=[16, 64, 64, 64, 64, 64])
+                        default=[128, 128, 256, 512])
     parser.add_argument('--n_valid', type=int, default=10000, help='number of samples for validation after training')
     opt = parser.parse_args()
 
@@ -91,11 +91,11 @@ if __name__ == '__main__':
     # Validation part
     # -------
 
-    dir = data_path + 'sampling/wgan'
+    dir = f'{data_path}/sampling/wgan'
     if not os.path.exists(dir):
         os.mkdir(dir)
 
-    path = data_path + 'sampling/wgan'
+    path = f'{data_path}/sampling/wgan'
 
     i = 0
     for _ in range(int(n_valid / b_size)):

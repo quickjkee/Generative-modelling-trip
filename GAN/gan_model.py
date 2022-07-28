@@ -49,9 +49,6 @@ class Discriminator(torch.nn.Module):
         )
 
     def forward(self, x):
-        x = x.view(-1, 28 * 28)
-        assert x.size(dim=1) == self.input_size, 'Dimensional of input noise should equal initialized'
-
         out = self.disc(x)
 
         return out
@@ -63,6 +60,7 @@ class GAN(torch.nn.Module):
         super(GAN, self).__init__()
         self.device = device
         self.input_size = input_size
+        self.output_size = output_size
         self.generator = Generator(input_size=input_size,
                                    output_size=output_size).to(self.device)
         self.discriminator = Discriminator(input_size=output_size).to(self.device)
@@ -120,7 +118,7 @@ class GAN(torch.nn.Module):
                 Z_samples = torch.randn(b_size, self.input_size).to(self.device)
                 fake_data = self.generator(Z_samples)
 
-                real_data = data.to(self.device)
+                real_data = data.to(self.device).view(-1, self.output_size)
                 pred_true = self.discriminator(real_data)
                 pred_fake = self.discriminator(fake_data)
 

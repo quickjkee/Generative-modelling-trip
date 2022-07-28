@@ -48,7 +48,7 @@ class EBM(nn.Module):
 
         return loss, contrastive_div, regularization
 
-    def sample(self, eval=False):
+    def sample(self):
         """
         Function for sampling from EBM
         :return: (Tensor), [b_size x C x W x H]

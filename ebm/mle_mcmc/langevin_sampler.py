@@ -80,7 +80,7 @@ class Sampler:
         """
         Sampling using Langevin MCMC
         :param e_model: (nn.Module), energy of the Boltzmann distribution (model distribution)
-        :return: (Tensor), [n_samples x C x W x H], samples from model distribution
+        :return: (Tensor), [_n_samples x C x W x H], samples from model distribution
         """
         if eval:
             inp_img = torch.rand((self._n_samples,) + self.img_shape) * 2 - 1
