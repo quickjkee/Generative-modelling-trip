@@ -8,7 +8,7 @@ generative models and code for the _realization_.
 
 Go to the folder with interesting model and
 ```python
-python run main.py --{option} {value}
+python main.py --{option} {value}
 ```
 __Docker__
 ```python
