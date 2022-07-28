@@ -30,8 +30,11 @@ docker build dockerfiles/Dockerfile
 - Code
     - [Put](./ebm/mle_mcmc). Realization of the Maximum Likelihood training with MCMC
     - in progress. Realization of the Noise Contrastive Estimation
-- Results \
- in progress
+- Results
+    - __NCE__ (toy example)
+      <p align="center">
+      <img src="data/imgs/NCE_toy.svg" alt="drawing" width="640"/>
+      </p>
 
 -------------
 
