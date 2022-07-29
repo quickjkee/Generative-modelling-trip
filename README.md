@@ -48,7 +48,10 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./VAE). Realization of the VAE
 - Results \
- in progress
+  - MNIST 
+      <p align="center">
+      <img src="data/imgs/vae_mnist.png" alt="drawing" width="340"/>
+      </p>
 
 ---------------
 
@@ -60,7 +63,10 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./vae_flows). Realization of planar flows and VAE with normalizing flows
 - Results \
- in progress
+  - MNIST 
+      <p align="center">
+      <img src="data/imgs/vae_flows_mnist.png" alt="drawing" width="340"/>
+      </p>
 
 ----------------
 
@@ -72,7 +78,10 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./GAN). Realization of GAN
 - Results \
- in progress
+   - MNIST (fully connected networ)
+      <p align="center">
+      <img src="data/imgs/gan_mnist.png" alt="drawing" width="340"/>
+      </p>
 ----------------
 
 ### __Wasserstein GAN__
@@ -84,7 +93,10 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./GAN). Realization of WGAN
 - Results \
- in progress
+  - MNIST 
+      <p align="center">
+      <img src="data/imgs/wgan_mnist.png" alt="drawing" width="340"/>
+      </p>
 
 --------------
 
@@ -95,7 +107,10 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./vae_gan). Realization of VAE GAN
 - Results \
- in progress
+  - MNIST 
+      <p align="center">
+      <img src="data/imgs/vae_gan_mnist.png" alt="drawing" width="340"/>
+      </p>
 
 ------------
 
@@ -106,4 +121,7 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./vae_gan). Realization of AAE
 - Results \
- in progress
+  - MNIST 
+      <p align="center">
+      <img src="data/imgs/aae_mnist.png" alt="drawing" width="340"/>
+      </p>
