@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     i = 0
     for _ in range(int(n_valid / b_size)):
-        noise = torch.randn(b_size, hidden_dim).to(device)
+        noise = torch.randn((b_size, hidden_dim, 1, 1)).to(device)
         objects = wgan.sample(noise)
         with torch.no_grad():
             for obj in objects:
