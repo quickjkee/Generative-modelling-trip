@@ -31,7 +31,7 @@ docker build dockerfiles/Dockerfile
     - [Put](./ebm/mle_mcmc). Realization of the Maximum Likelihood training with MCMC
     - in progress. Realization of the Noise Contrastive Estimation
 - Results
-    - __NCE__ (toy example)
+    - __NCE__ model (toy example)
       <p align="center">
       <img src="data/imgs/NCE_toy.svg" alt="drawing" width="640"/>
       </p>
@@ -47,7 +47,7 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/abs/1312.6114?context=cs.LG). Original paper about VAE.
 - Code
   - [Put](./VAE). Realization of the VAE
-- Results \
+- Results
   - MNIST 
       <p align="center">
       <img src="data/imgs/vae_mnist.png" alt="drawing" width="340"/>
@@ -62,7 +62,7 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/pdf/1505.05770.pdf). Original paper
 - Code
   - [Put](./vae_flows). Realization of planar flows and VAE with normalizing flows
-- Results \
+- Results
   - MNIST 
       <p align="center">
       <img src="data/imgs/vae_flows_mnist.png" alt="drawing" width="340"/>
@@ -77,8 +77,8 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/abs/1406.2661). Original paper
 - Code
   - [Put](./GAN). Realization of GAN
-- Results \
-   - MNIST (fully connected networ)
+- Results
+   - MNIST (fully connected network)
       <p align="center">
       <img src="data/imgs/gan_mnist.png" alt="drawing" width="340"/>
       </p>
@@ -92,7 +92,7 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/abs/1701.07875?context=cs). Original paper
 - Code
   - [Put](./GAN). Realization of WGAN
-- Results \
+- Results
   - MNIST 
       <p align="center">
       <img src="data/imgs/wgan_mnist.png" alt="drawing" width="340"/>
@@ -106,7 +106,7 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/abs/1512.09300?context=cs.CV). Original paper
 - Code
   - [Put](./vae_gan). Realization of VAE GAN
-- Results \
+- Results
   - MNIST 
       <p align="center">
       <img src="data/imgs/vae_gan_mnist.png" alt="drawing" width="340"/>
@@ -120,7 +120,7 @@ docker build dockerfiles/Dockerfile
   - [Must read](https://arxiv.org/abs/1511.05644). Original paper
 - Code
   - [Put](./vae_gan). Realization of AAE
-- Results \
+- Results
   - MNIST 
       <p align="center">
       <img src="data/imgs/aae_mnist.png" alt="drawing" width="340"/>
