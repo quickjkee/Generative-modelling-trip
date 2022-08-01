@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from annealed_langevin import sample_anneal_langevin
 from models import ScoreNetwork
 from models2 import CondRefineNetDilated
+from refinenet import RefineNet
 from ncsn import NCSN
 
 if __name__ == '__main__':
@@ -20,7 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
-    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=256)
+    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=32)
+    parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=10)
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples from noise')
     opt = parser.parse_args()
 
@@ -33,6 +35,7 @@ if __name__ == '__main__':
     b_size = opt.b_size
     n_epochs = opt.n_epochs
     data_path = opt.data_path
+    n_noise = opt.n_noise
     n_valid = opt.n_valid
 
     # ------------
@@ -63,12 +66,14 @@ if __name__ == '__main__':
     # Model preparation
     # -------
 
-    score_nn = CondRefineNetDilated(None)
+    score_nn = RefineNet(in_channels=in_channels,
+                         channels=conv_dims,
+                         n_classes=n_noise)
     sampler = sample_anneal_langevin
     ncsn = NCSN(score_nn=score_nn,
                 sampler=sampler,
                 device=device,
-                sigmas=torch.linspace(1, 0.01, steps=10))
+                sigmas=torch.linspace(1, 0.01, steps=n_noise))
 
     # --------
     # Training part
