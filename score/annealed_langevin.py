@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 
 
 @torch.no_grad()
@@ -24,9 +23,9 @@ def sample_anneal_langevin(x, score_nn, sigmas, eps=2e-5, T=100):
         for t in range(T):
             samples.append(torch.clamp(x, -1.0, 1.0).to('cpu'))
 
-            z = torch.randn_like(x, device=x.device) * torch.tensor(torch.sqrt(step_size), device=x.device)
+            z = torch.randn_like(x, device=x.device) * torch.tensor(torch.sqrt(2 * step_size), device=x.device)
 
             score = score_nn(x, labels)
-            x = x + step_size / 2 * score + z
+            x = x + step_size * score + z
 
     return samples

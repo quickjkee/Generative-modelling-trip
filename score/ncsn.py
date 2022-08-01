@@ -91,7 +91,7 @@ class NCSN(nn.Module):
 
     def sample(self, size):
         x = torch.randn(size=size).to(self.device)
-        samples = self.sampler(x, self.score_nn, self.sigmas, self.sigmas)
+        samples = self.sampler(x, self.score_nn, self.sigmas)
 
         return samples
 
