@@ -9,7 +9,7 @@ import torch
 ##############################
 
 class CondResBlock(nn.Module):
-    def __init__(self, n_classes, in_channels, out_channels):
+    def __init__(self, n_classes, in_channels, out_channels, dilation=None, resize=False):
         """
         :param n_classes: (Int), number of different levels of noise
         :param in_channels: (Int), number of input channels
@@ -20,12 +20,18 @@ class CondResBlock(nn.Module):
         self.act = nn.ELU()
 
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.shortcut = nn.ModuleList([
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
-            CondBatchNorm2d(n_classes=n_classes,
-                            n_features=out_channels)
-        ])
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
+
+        if not resize:
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=dilation, dilation=dilation)
+            self.shortcut = None
+
+        else:
+            self.shortcut = nn.ModuleList([
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
+                CondBatchNorm2d(n_classes=n_classes,
+                                n_features=out_channels)
+            ])
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
 
         self.norm1 = CondBatchNorm2d(n_classes=n_classes,
                                      n_features=out_channels)
@@ -39,46 +45,51 @@ class CondResBlock(nn.Module):
         :return: (Tensor), [b_size x C' x H/2 x W/2], output image
         """
         # (B x C x W x H) -> (B x C x W/2 x H/2)
-        shortcut = self.shortcut[0](x)
-        shortcut = self.shortcut[1](shortcut, y)
+        if self.shortcut:
+            shortcut = self.shortcut[0](x)
+            shortcut = self.shortcut[1](shortcut, y)
+        else:
+            shortcut = x
 
         # (B x C x W x H) -> (B x C x W x H)
-        x = self.act(self.norm1(self.conv1(x), y))
+        out = self.act(self.norm1(self.conv1(x), y))
 
         # (B x C x W x H) -> (B x C x W/2 x H/2)
-        x = self.act(self.norm2(self.conv2(x), y))
-        out = x + shortcut
+        out = self.act(self.norm2(self.conv2(out), y))
+        out = out + shortcut
 
         return self.act(out)
 
 
 class CondBatchNorm2d(nn.Module):
-    def __init__(self, n_classes, n_features):
-        """
-        Realization of enhanced batch normalization of condition
-        :param n_classes: (Int), number of different levels of noise
-        :param n_features: (Int), number of channels in image to normalize
-        """
-        super(CondBatchNorm2d, self).__init__()
-
+    def __init__(self, n_features, n_classes, bias=True):
+        super().__init__()
         self.n_features = n_features
-
-        self.bn = nn.BatchNorm2d(num_features=n_features)
-        self.embed = nn.Embedding(n_classes, n_features * 2)
+        self.bias = bias
+        self.instance_norm = nn.InstanceNorm2d(n_features, affine=False, track_running_stats=False)
+        if bias:
+            self.embed = nn.Embedding(n_classes, n_features * 3)
+            self.embed.weight.data[:, :2 * n_features].normal_(1, 0.02)  # Initialise scale at N(1, 0.02)
+            self.embed.weight.data[:, 2 * n_features:].zero_()  # Initialise bias at 0
+        else:
+            self.embed = nn.Embedding(n_classes, 2 * n_features)
+            self.embed.weight.data.normal_(1, 0.02)
 
     def forward(self, x, y):
-        """
-        :param x: (Tensor), [b_size x C x H x W], input image
-        :param y: (Tensor), [b_size x 1], labels of noise
-        :return: (Tensor), [b_size x C' x H/2 x W/2], output image
-        """
-        normed = self.bn(x)
+        means = torch.mean(x, dim=(2, 3))
+        m = torch.mean(means, dim=-1, keepdim=True)
+        v = torch.var(means, dim=-1, keepdim=True)
+        means = (means - m) / (torch.sqrt(v + 1e-5))
+        h = self.instance_norm(x)
 
-        # (B x 1) -> (B x n_features * 2)
-        gamma, beta = self.embed(y).chunk(2, dim=1)
-
-        out = normed * gamma.view(-1, self.n_features, 1, 1) + beta.view(-1, self.n_features, 1, 1)
-
+        if self.bias:
+            gamma, alpha, beta = self.embed(y).chunk(3, dim=-1)
+            h = h + means[..., None, None] * alpha[..., None, None]
+            out = gamma.view(-1, self.n_features, 1, 1) * h + beta.view(-1, self.n_features, 1, 1)
+        else:
+            gamma, alpha = self.embed(y).chunk(2, dim=-1)
+            h = h + means[..., None, None] * alpha[..., None, None]
+            out = gamma.view(-1, self.n_features, 1, 1) * h
         return out
 
 
@@ -205,7 +216,7 @@ class CRPBlock(nn.Module):
         self.n_stages = n_stages
         self.features = features
 
-        self.act = nn.ReLU()
+        self.act = nn.ELU()
         self.convs = self._make_convs()
         self.pool = nn.MaxPool2d(kernel_size=5, stride=1, padding=2)
 

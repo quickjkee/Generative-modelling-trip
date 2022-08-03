@@ -7,7 +7,6 @@ import os
 from torch.utils.data import DataLoader
 
 from annealed_langevin import sample_anneal_langevin
-from models import ScoreNetwork
 from models2 import CondRefineNetDilated
 from refinenet import RefineNet
 from ncsn import NCSN
@@ -17,11 +16,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=1000, help='number of epochs of training')
     parser.add_argument("--in_channels", type=int, default=1, help='number of channels in image')
-    parser.add_argument("--b_size", type=int, default=64, help='size of the mini batch')
+    parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
-    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=32)
+    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=64)
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=10)
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples from noise')
     opt = parser.parse_args()
@@ -73,7 +72,7 @@ if __name__ == '__main__':
     ncsn = NCSN(score_nn=score_nn,
                 sampler=sampler,
                 device=device,
-                sigmas=torch.linspace(1, 0.01, steps=n_noise))
+                sigmas=torch.exp(torch.linspace(torch.log(torch.tensor(1).float()), torch.log(torch.tensor(0.01).float()), steps=10)))
 
     # --------
     # Training part
