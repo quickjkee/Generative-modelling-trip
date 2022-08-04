@@ -6,15 +6,15 @@ import torchvision
 
 from torch.utils.data import DataLoader
 
-from gan_model import GAN
+from dcgan import GAN
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_epochs", type=int, default=1, help='number of epochs of training')
+    parser.add_argument("--n_epochs", type=int, default=10, help='number of epochs of training')
     parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=int, default=32, help='size of input image')
-    parser.add_argument('--h_dim', type=int, default=16, help='hidden dimension')
+    parser.add_argument('--h_dim', type=int, default=100, help='hidden dimension')
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
     parser.add_argument('--n_valid', type=int, default=10000, help='number of samples from noise')
 
@@ -58,12 +58,12 @@ if __name__ == '__main__':
     # Model preparation
     # -------
 
-    gan = GAN(input_size=h_dim,
-              output_size=int(img_size * img_size),
-              epochs=n_epochs,
+    gan = GAN(in_dim=1,
+              z_dim=h_dim,
               device=device)
 
-    out = gan.fit(trainloader)
+    out = gan.fit(trainloader,
+                  n_epochs)
 
     # --------
     # Validation part

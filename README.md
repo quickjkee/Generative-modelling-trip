@@ -41,7 +41,7 @@ docker build dockerfiles/Dockerfile
 ### __Variational Auto Encoders__
 
 - Theory
-  - [Put](./VAE/theory/TheorIntro.pdf). My notes about VAE (motivation, evidence lower bound, EM algorithm,
+  - [Put](./VAE/theory/VAE.pdf). My notes about VAE (motivation, evidence lower bound, EM algorithm,
   something from information theory)
   - [Must read](https://arxiv.org/abs/1606.05908). Tutorial about VAE, great to start.
   - [Must read](https://arxiv.org/abs/1312.6114?context=cs.LG). Original paper about VAE.
@@ -78,9 +78,9 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./GAN). Realization of GAN
 - Results
-   - MNIST (fully connected network)
+   - MNIST (DCGAN)
       <p align="center">
-      <img src="data/imgs/gan_mnist.png" alt="drawing" width="340"/>
+      <img src="data/imgs/gan_mnist2.png" alt="drawing" width="340"/>
       </p>
 ----------------
 

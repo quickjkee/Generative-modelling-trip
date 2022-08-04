@@ -164,10 +164,14 @@ class RCUBlock(nn.Module):
                                kernel_size=3,
                                stride=1,
                                padding=1)
+        self.norm1 = nn.InstanceNorm2d(features)
+        self.norm2 = nn.InstanceNorm2d(features)
 
     def forward(self, x):
         # (B x C x W x H) -> (B x C x W x H)
-        out = self.conv1(self.act(x))
+        out = self.norm1(x)
+        out = self.conv1(self.act(out))
+        out = self.norm2(out)
         out = self.conv2(self.act(out))
 
         return out + x
@@ -187,6 +191,7 @@ class MRFBlock(nn.Module):
 
         for i in range(len(self.in_planes)):
             out.append(nn.Sequential(
+                nn.InstanceNorm2d(self.in_planes[i]),
                 nn.Conv2d(self.in_planes[i],
                           self.out_features,
                           kernel_size=3,
@@ -224,11 +229,12 @@ class CRPBlock(nn.Module):
         convs = nn.ModuleList()
 
         for _ in range(self.n_stages):
-            convs.append(nn.Conv2d(self.features,
-                                   self.features,
-                                   kernel_size=3,
-                                   stride=1,
-                                   padding=1))
+            convs.append(nn.Sequential(nn.InstanceNorm2d(self.features),
+                                       nn.Conv2d(self.features,
+                                                 self.features,
+                                                 kernel_size=3,
+                                                 stride=1,
+                                                 padding=1)))
 
         return convs
 
