@@ -7,8 +7,7 @@ import os
 from torch.utils.data import DataLoader
 
 from annealed_langevin import sample_anneal_langevin
-from models2 import CondRefineNetDilated
-from refinenet import RefineNet
+from score.models.refinenet_v1 import RefineNet
 from ncsn import NCSN
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-## Welcome to the generative modelling trip
+## Generative modelling trip
 
 Here you can find some useful information (i hope so) to embark on a journey
 through generative models. You can find _theoretical notes_ about
@@ -34,6 +34,22 @@ docker build dockerfiles/Dockerfile
     - __NCE__ model (toy example)
       <p align="center">
       <img src="data/imgs/NCE_toy.svg" alt="drawing" width="640"/>
+      </p>
+
+-------------
+### __Score based models__
+
+- Theory
+    - [Put](./ebm/theory/EBM.pdf). My notes about score based models (mostly based on previous notes about EBM)
+    - [Must read](https://arxiv.org/abs/1907.05600). Original paper about score based generative models.
+    - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
+    - [Must read](https://arxiv.org/pdf/2006.09011.pdf). Paper with some techniques about how to train SBM.
+    - [Must watch](https://www.youtube.com/watch?v=8TcNXi3A5DI&t=4056s). Lecture from Stefano Ermon.
+- Code
+    - [Put](./score). Realization of the Score Matching with Denoising Score Matching.
+- Results
+      <p align="center">
+      <img src="data/imgs/score.png" alt="drawing" width="340"/>
       </p>
 
 -------------

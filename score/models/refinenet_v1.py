@@ -1,5 +1,5 @@
 import torch.nn as nn
-from layers import CondResBlock, RefineBlock
+from score.models.layers import CondResBlock, RefineBlock
 
 
 class RefineNet(nn.Module):
