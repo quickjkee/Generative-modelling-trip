@@ -15,7 +15,22 @@ __Docker__
 docker build dockerfiles/Dockerfile
 ```
 ---------
-### __Energy based models__
+### Table of contents
+* [Energy based models](#energy-based-models)
+* Score based models
+  * [Noise conditional score model](#noise-conditional-score-model)
+* Variational Auto Encoders
+  * [Traditional VAE](#variational-auto-encoders) 
+  * [VAE with normalizing flows](#variational-auto-encoder-with-normalizing-flow)
+  * [VAE GAN](#vae-gan)
+* Generative Adversarial Networks 
+  * [Classical GAN/DCGAN](#generative-adversarial-network)
+  * [Wasserstein GAN](#wasserstein-gan)
+  * [Adversarial Auto Encoder](#adversarial-auto-encoder)
+
+
+---------
+### Energy based models
 
 - Theory
     - [Put](./ebm/theory/EBM.pdf). My notes including introduction to EBM, Maximum Likelihood training with MCMC,
@@ -37,7 +52,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 -------------
-### __Score based models__
+### Noise conditional score model
 
 - Theory
     - [Put](./score/theory/ScoreBased.pdf). My notes about score based models (mostly based on previous notes about EBM)
@@ -53,8 +68,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 -------------
-
-### __Variational Auto Encoders__
+### Variational Auto Encoders
 
 - Theory
   - [Put](./VAE/theory/VAE.pdf). My notes about VAE (motivation, evidence lower bound, EM algorithm,
@@ -70,8 +84,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 ---------------
-
-### __Variational Auto Encoder with Normalizing flow__
+### Variational Auto Encoder with Normalizing flow
 - Theory
   - [Put](./vae_flows/theory/vae_flows_theory.pdf).  My short notes about combination of normalizing flows with VAE (motivation and derivation)
   - [Must read](https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial11/NF_image_modeling.html). Tutorial about normalizing flows 
@@ -85,8 +98,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 ----------------
-
-### __Generative Adversarial Network__
+### Generative Adversarial Network
 - Theory
   - in progress.  My notes about GAN (some thoughts about instability, view on loss function)
   - [Must read]. A lot of stuff on the internet.
@@ -99,8 +111,7 @@ docker build dockerfiles/Dockerfile
       <img src="data/imgs/gan_mnist2.png" alt="drawing" width="340"/>
       </p>
 ----------------
-
-### __Wasserstein GAN__
+### Wasserstein GAN
 - Theory
   - [Put](./WGAN/theory/WGAN.pdf).  My notes about WGAN (discussions about the main problem of the GAN)
   - [Must read](https://www.alexirpan.com/2017/02/22/wasserstein-gan.html). Tutorial about WGAN
@@ -115,8 +126,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 --------------
-
-### __VAE GAN__
+### VAE GAN
 - Theory
   - [Put](./vae_gan/theory/VaeGan_theory.pdf).  My notes about VAE GAN
   - [Must read](https://arxiv.org/abs/1512.09300?context=cs.CV). Original paper
@@ -129,8 +139,7 @@ docker build dockerfiles/Dockerfile
       </p>
 
 ------------
-
-### __Adversarial Auto Encoder__
+### Adversarial Auto Encoder
 - Theory
   - [Put](./adversarial_auto_encoder/theory/AAE_some_theory.pdf).  My notes about AAE
   - [Must read](https://arxiv.org/abs/1511.05644). Original paper
