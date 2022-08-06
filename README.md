@@ -40,7 +40,7 @@ docker build dockerfiles/Dockerfile
 ### __Score based models__
 
 - Theory
-    - [Put](./ebm/theory/EBM.pdf). My notes about score based models (mostly based on previous notes about EBM)
+    - [Put](./score/theory/ScoreBased.pdf). My notes about score based models (mostly based on previous notes about EBM)
     - [Must read](https://arxiv.org/abs/1907.05600). Original paper about score based generative models.
     - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
     - [Must read](https://arxiv.org/pdf/2006.09011.pdf). Paper with some techniques about how to train SBM.
