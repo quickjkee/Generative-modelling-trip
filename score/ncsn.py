@@ -85,7 +85,7 @@ class NCSN(nn.Module):
         self.noise = torch.randn_like(x).to(self.device)
 
         x_noised = x + self.noise * self.used_sigma
-        score = self.score_nn(x_noised, labels)
+        score = self.score_nn(x_noised, self.used_sigma)
 
         return score
 
@@ -103,7 +103,7 @@ class NCSN(nn.Module):
         :return:
         """
         params = self.score_nn.parameters()
-        opt = torch.optim.Adam(lr=3e-4, params=params)
+        opt = torch.optim.Adam(lr=1e-4, params=params)
 
         for i in range(n_epochs):
             for j, batch in enumerate(trainloader):
