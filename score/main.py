@@ -7,14 +7,14 @@ import os
 from torch.utils.data import DataLoader
 
 from annealed_langevin import sample_anneal_langevin
-from score.models.refinenet_v2 import RefineNet
+from models.refinenet_v2 import RefineNet
 from ncsn import NCSN
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_epochs", type=int, default=1000, help='number of epochs of training')
-    parser.add_argument("--in_channels", type=int, default=1, help='number of channels in image')
+    parser.add_argument("--in_channels", type=int, default=3, help='number of channels in image')
     parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
@@ -39,26 +39,18 @@ if __name__ == '__main__':
     # ------------
     # Data preparation
     # ------------
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,
+                                            download=True,
+                                            transform=torchvision.transforms.Compose([
+                                                torchvision.transforms.ToTensor(),
+                                                torchvision.transforms.Resize([img_size, img_size]),
+                                                torchvision.transforms.Normalize(
+                                                    (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                            ])
+                                            )
 
-    trainloader = torch.utils.data.DataLoader(
-        torchvision.datasets.MNIST(data_path, train=True, download=True,
-                                   transform=torchvision.transforms.Compose([
-                                       torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Resize([img_size, img_size]),
-                                       torchvision.transforms.Normalize(
-                                           (0.5,), (0.5,))
-                                   ])),
-        batch_size=b_size, shuffle=True)
-
-    testloader = torch.utils.data.DataLoader(
-        torchvision.datasets.MNIST(data_path, train=False, download=True,
-                                   transform=torchvision.transforms.Compose([
-                                       torchvision.transforms.ToTensor(),
-                                       torchvision.transforms.Resize([img_size, img_size]),
-                                       torchvision.transforms.Normalize(
-                                           (0.5,), (0.5,))
-                                   ])),
-        batch_size=b_size, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=b_size,
+                                              shuffle=True, num_workers=2)
 
     # --------
     # Model preparation
@@ -70,7 +62,10 @@ if __name__ == '__main__':
     ncsn = NCSN(score_nn=score_nn,
                 sampler=sampler,
                 device=device,
-                sigmas=torch.exp(torch.linspace(torch.log(torch.tensor(1).float()), torch.log(torch.tensor(0.01).float()), steps=10)))
+                data_path=data_path,
+                sigmas=torch.exp(
+                    torch.linspace(torch.log(torch.tensor(50).float()), torch.log(torch.tensor(0.01).float()),
+                                   steps=232)))
 
     # --------
     # Training part

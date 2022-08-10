@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import time
+import os
 
 
 class NCSN(nn.Module):
@@ -11,12 +12,13 @@ class NCSN(nn.Module):
     - noise levels
     """
 
-    def __init__(self, score_nn, sampler, device, sigmas=None):
+    def __init__(self, score_nn, sampler, device, data_path, sigmas=None):
         """
         :param score_nn: (nn.Module), Neural network for approximation the score
         :param sampler: (Sampler), object with .sample() method
         :param sigmas: (Tensor), array of different noise levels
         :param device: current working device
+        :param data_path: path to data with model
         :param lambda: (Tensor), weights in objective loss
         """
         super(NCSN, self).__init__()
@@ -31,8 +33,17 @@ class NCSN(nn.Module):
 
         self.device = device
 
+        self.data_path = data_path
+
         self.used_sigma = None
         self.noise = None
+
+    def _checkpoint(self):
+        dir = f'{self.data_path}/models/NCSN'
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        torch.save(self.score_nn.state_dict(), dir)
 
     def _dsm_loss(self, score):
         """
@@ -124,3 +135,5 @@ class NCSN(nn.Module):
                 print(f'Epoch [{i}/{n_epochs}], batch [{j}/{len(trainloader)}] \n'
                       f'Loss {type} = {round(loss.item(), 4)} \n'
                       f'Time for batch {round(end_time, 3)}')
+
+        self._checkpoint()

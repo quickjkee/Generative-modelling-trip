@@ -17,24 +17,25 @@ class RefineNet(nn.Module):
         self.res1 = nn.ModuleList([
             ResBlock(in_channels=channels,
                      out_channels=channels,
+                     dilation=2,
                      resize=True),
             ResBlock(in_channels=channels,
                      out_channels=channels,
-                     dilation=2,
                      resize=False)
         ])
         self.res2 = nn.ModuleList([
             ResBlock(in_channels=channels,
                      out_channels=channels * 2,
+                     dilation=2,
                      resize=True),
             ResBlock(in_channels=channels * 2,
                      out_channels=channels * 2,
-                     dilation=2,
                      resize=False)
         ])
         self.res3 = nn.ModuleList([
             ResBlock(in_channels=channels * 2,
                      out_channels=channels * 2,
+                     dilation=2,
                      resize=True),
             ResBlock(in_channels=channels * 2,
                      out_channels=channels * 2,
@@ -44,6 +45,7 @@ class RefineNet(nn.Module):
         self.res4 = nn.ModuleList([
             ResBlock(in_channels=channels * 2,
                      out_channels=channels * 2,
+                     dilation=4,
                      resize=True),
             ResBlock(in_channels=channels * 2,
                      out_channels=channels * 2,

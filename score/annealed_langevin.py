@@ -2,7 +2,7 @@ import torch
 
 
 @torch.no_grad()
-def sample_anneal_langevin(x, score_nn, sigmas, eps=2e-5, T=100):
+def sample_anneal_langevin(x, score_nn, sigmas, eps=6.2e-6, T=5):
     """
     Sampling procedure via annealed langevin dynamics
     :param x: (Tensor), [n_samples x C x W x H], initial samples

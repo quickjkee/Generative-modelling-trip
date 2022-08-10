@@ -21,18 +21,22 @@ class ResBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
         if not resize:
-            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=dilation, dilation=dilation)
+            if dilation:
+                self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=dilation, padding=dilation)
+            else:
+                self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
             self.shortcut = None
 
         else:
             self.shortcut = nn.ModuleList([
                 nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
-                nn.InstanceNorm2d(out_channels)
+                InstanceNormPlus(out_channels)
             ])
-            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, dilation=dilation,
+                                   padding=dilation)
 
-        self.norm1 = nn.InstanceNorm2d(out_channels)
-        self.norm2 = nn.InstanceNorm2d(out_channels)
+        self.norm1 = InstanceNormPlus(out_channels)
+        self.norm2 = InstanceNormPlus(out_channels)
 
     def forward(self, x):
         """
@@ -70,7 +74,7 @@ class InstanceNormPlus(nn.Module):
         if bias:
             self.beta = nn.Parameter(torch.zeros(n_features))
 
-    def forward(self, x, y):
+    def forward(self, x):
         means = torch.mean(x, dim=(2, 3))
         m = torch.mean(means, dim=-1, keepdim=True)
         v = torch.var(means, dim=-1, keepdim=True)
@@ -78,7 +82,6 @@ class InstanceNormPlus(nn.Module):
         h = self.instance_norm(x)
 
         if self.bias:
-
             h = h + means[..., None, None] * self.alpha[..., None, None]
             out = self.gamma.view(-1, self.n_features, 1, 1) * h + self.beta.view(-1, self.n_features, 1, 1)
         else:
