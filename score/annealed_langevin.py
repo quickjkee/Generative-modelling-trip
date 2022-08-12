@@ -18,6 +18,7 @@ def sample_anneal_langevin(x, score_nn, sigmas, eps=6.2e-6, T=5):
         labels = torch.ones(size=(x.size(dim=0),), device=x.device) * label
         labels = labels.long()
 
+        used_sigma = sigmas[labels].view(-1, 1, 1, 1)
         step_size = eps * (sigma / sigmas[-1]) ** 2
 
         for t in range(T):
@@ -25,7 +26,7 @@ def sample_anneal_langevin(x, score_nn, sigmas, eps=6.2e-6, T=5):
 
             z = torch.randn_like(x, device=x.device) * torch.tensor(torch.sqrt(2 * step_size), device=x.device)
 
-            score = score_nn(x, labels)
+            score = score_nn(x, used_sigma)
             x = x + step_size * score + z
 
     return samples

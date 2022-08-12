@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
     parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=64)
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=10)
-    parser.add_argument('--n_valid', type=int, default=512, help='number of samples from noise')
+    parser.add_argument('--n_valid', type=int, default=128, help='number of samples from noise')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -71,8 +71,8 @@ if __name__ == '__main__':
     # Training part
     # -------
 
-    out = ncsn.fit(trainloader=trainloader,
-                   n_epochs=n_epochs)
+    #out = ncsn.fit(trainloader=trainloader,
+    #               n_epochs=n_epochs)
 
     # --------
     # Validation part
@@ -90,6 +90,6 @@ if __name__ == '__main__':
         objects = ncsn.sample(size)[-1]
         with torch.no_grad():
             for obj in objects:
-                img = torch.reshape(obj.to('cpu'), (img_size, img_size))
+                img = torch.reshape(obj.to('cpu'), (img_size, img_size, in_channels))
                 plt.imsave("{}/{}.png".format(path, i), img, cmap="gray_r")
                 i += 1

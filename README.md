@@ -27,6 +27,7 @@ docker build dockerfiles/Dockerfile
   * [Classical GAN/DCGAN](#generative-adversarial-network)
   * [Wasserstein GAN](#wasserstein-gan)
   * [Adversarial Auto Encoder](#adversarial-auto-encoder)
+  * [Boundary Equilibrium Generative Adversarial Networks](#boundary-equilibrium-generative-adversarial-networks)
 
 
 ---------
@@ -65,6 +66,9 @@ docker build dockerfiles/Dockerfile
 - Results
       <p align="center">
       <img src="data/imgs/score.png" alt="drawing" width="340"/>
+      </p>
+      <p align="center">
+      <img src="data/imgs/cifar10_score.png" alt="drawing" width="340"/>
       </p>
 
 -------------
@@ -109,6 +113,20 @@ docker build dockerfiles/Dockerfile
    - MNIST (DCGAN)
       <p align="center">
       <img src="data/imgs/gan_mnist2.png" alt="drawing" width="340"/>
+      </p>
+  
+------------
+### Boundary Equilibrium Generative Adversarial Networks
+- Theory
+  - [Put](./began/theory/BEGAN.pdf).  My notes about BEGAN
+  - [Must read](https://arxiv.org/abs/1703.10717). Original paper
+  - [Must read](https://jonathan-hui.medium.com/gan-energy-based-gan-ebgan-boundary-equilibrium-gan-began-4662cceb7824). Blog about BEGAN
+- Code
+  - [Put](./began). Realization of BEGAN
+- Results
+  - MNIST (easy to get mode collapse, still cant fix)
+      <p align="center">
+      <img src="data/imgs/began_mnist.png" alt="drawing" width="340"/>
       </p>
 ----------------
 ### Wasserstein GAN

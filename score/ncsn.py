@@ -136,4 +136,4 @@ class NCSN(nn.Module):
                       f'Loss {type} = {round(loss.item(), 4)} \n'
                       f'Time for batch {round(end_time, 3)}')
 
-        self._checkpoint()
+            self._checkpoint()
