@@ -1,8 +1,8 @@
 ## Generative modelling trip
 
 Here you can find some useful information (i hope so) to embark on a journey
-through generative models. You can find _theoretical notes_ about
-generative models and code for the _realization_.
+through generative models. You can find __theoretical notes__ about
+generative models and code for the __realization__.
 
 > How to run?
 
