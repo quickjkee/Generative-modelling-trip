@@ -25,31 +25,32 @@ class Encoder(nn.Module):
         model = nn.Sequential(
             # (B x C_in x W X H) -> (B x C x W x H)
             nn.Conv2d(self.in_channels, self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(self.n_conv),
             nn.ELU(True),
 
             # (B x C x W X H) -> (B x 2*C x W/2 x H/2)
             nn.Conv2d(self.n_conv, 2 * self.n_conv, 3, 2, 1),
-            nn.ELU(True),
-
-            # (B x 2*C x W/2 x H/2) -> (B x 2*C x W/2 x H/2)
-            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
             nn.ELU(True),
 
             # (B x 2*C x W/2 x H/2) -> (B x 3*C x W/4 x H/4)
-            nn.Conv2d(2 * self.n_conv, 3 * self.n_conv, 3, 2, 1),
+            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 2, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
             nn.ELU(True),
 
             # (B x 3*C x W/4 x H/4) -> (B x 3*C x W/4 x H/4)
-            nn.Conv2d(3 * self.n_conv, 3 * self.n_conv, 3, 1, 1),
+            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
             nn.ELU(True),
 
-            # (B x 2*C x W/2 x H/2) -> (B x 3*C x W/4 x H/4)
-            nn.Conv2d(3 * self.n_conv, 3 * self.n_conv, 3, 1, 1),
+            # (B x 3*C x W/2 x H/2) -> (B x 3*C x W/4 x H/4)
+            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
             nn.ELU(True),
 
             # (B x 3*C x W/4 x H/4) -> (B x z_dim)
             nn.Flatten(),
-            nn.Linear(out_size * out_size * 3 * self.n_conv, self.z_dim)
+            nn.Linear(out_size * out_size * 2 * self.n_conv, self.z_dim)
         )
 
         return model
@@ -87,23 +88,35 @@ class Decoder(nn.Module):
         model = nn.Sequential(
             # (B x n_conv x 8 x 8) -> # (B x n_conv x 8 x 8)
             nn.Conv2d(self.n_conv, self.n_conv, 3, 1, 1),
-            nn.ELU(True),
+            nn.BatchNorm2d(self.n_conv),
+            nn.ReLU(True),
 
             # (B x n_conv x 8 x 8) -> # (B x 2*n_conv x 16 x 16)
-            nn.Conv2d(self.n_conv, 2 * self.n_conv, 3, 1, 1),
-            nn.ELU(True),
-            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ConvTranspose2d(self.n_conv, 2 * self.n_conv, 4, 2, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
+            nn.ReLU(True),
 
             # (B x 2*n_conv x 16 x 16) -> # (B x 2*n_conv x 16 x 16)
             nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
-            nn.ELU(True),
+            nn.BatchNorm2d(2 * self.n_conv),
+            nn.ReLU(True),
+
+            # (B x 2*n_conv x 16 x 16) -> # (B x 2*n_conv x 16 x 16)
+            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
+            nn.ReLU(True),
+
+            # (B x 2*n_conv x 16 x 16) -> # (B x 2*n_conv x 16 x 16)
+            nn.Conv2d(2 * self.n_conv, 2 * self.n_conv, 3, 1, 1),
+            nn.BatchNorm2d(2 * self.n_conv),
+            nn.ReLU(True),
 
             # (B x 2*n_conv x 16 x 16) -> # (B x 3*n_conv x 32 x 32)
-            nn.Conv2d(2 * self.n_conv, 3 * self.n_conv, 3, 1, 1),
-            nn.ELU(True),
-            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ConvTranspose2d(2 * self.n_conv, 3 * self.n_conv, 4, 2, 1),
+            nn.BatchNorm2d(3 * self.n_conv),
+            nn.ReLU(True),
 
-            nn.Conv2d(3 * self.n_conv, self.in_channels, 3, 1, 1),
+            nn.Conv2d(3 * self.n_conv, self.in_channels, 3, 1, 1)
         )
 
         return model
@@ -118,7 +131,7 @@ class Decoder(nn.Module):
             raise ValueError("Input size of latent vector does not matches with initialized")
 
         input = self.in_layer(x).view(-1, self.n_conv, 8, 8)
-        out = self.model(input)
+        out = torch.tanh(self.model(input))
 
         return out
 

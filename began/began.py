@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import time
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class Began(nn.Module):
@@ -18,13 +19,14 @@ class Began(nn.Module):
         self.ae = ae.to(device)
 
         self.k = 0
-        self.gamma = 0.5
-        self.lam = 0.001
+        self.gamma = 1
+        self.lam = 0.1
 
         self.z_dim = z_dim
 
         self.device = device
 
+    @torch.no_grad()
     def sample(self, noise):
         """
         Sampling from began model
@@ -44,9 +46,7 @@ class Began(nn.Module):
 
         ae_loss = ae_real_loss - self.k * ae_fake_loss
 
-        self._k_update(ae_real_loss, ae_fake_loss)
-
-        return ae_loss
+        return ae_loss, ae_real_loss, ae_fake_loss
 
     @torch.no_grad()
     def _k_update(self, ae_real_loss, ae_fake_loss):
@@ -66,8 +66,13 @@ class Began(nn.Module):
         return ae_fake_loss
 
     def fit(self, trainloader, n_epochs):
-        g_opt = torch.optim.Adam(lr=1e-4, params=self.gen.parameters())
-        ae_opt = torch.optim.Adam(lr=1e-4, params=self.ae.parameters())
+        g_opt = torch.optim.Adam(lr=1e-4, betas=(0.5, 0.999), params=self.gen.parameters())
+        ae_opt = torch.optim.Adam(lr=1e-4, betas=(0.5, 0.999), params=self.ae.parameters())
+
+        G_scheduler = ReduceLROnPlateau(g_opt, factor=0.5, threshold=0.01,
+                                        patience=5 * len(trainloader))
+        D_scheduler = ReduceLROnPlateau(ae_opt, factor=0.5, threshold=0.01,
+                                        patience=5 * len(trainloader))
 
         for i in range(n_epochs):
 
@@ -88,12 +93,12 @@ class Began(nn.Module):
                 ae_real = self.ae(real_batch)
                 ae_fake = self.ae(fake_batch)
 
-                ae_loss = self._ae_loss(real_batch,
-                                        ae_real,
-                                        fake_batch,
-                                        ae_fake)
+                ae_loss, ae_real_loss, ae_fake_loss = self._ae_loss(real_batch,
+                                                                    ae_real,
+                                                                    fake_batch,
+                                                                    ae_fake)
 
-                ae_loss.backward(retain_graph=True)
+                ae_loss.backward()
                 ae_opt.step()
 
                 ##################################
@@ -101,6 +106,8 @@ class Began(nn.Module):
                 ##################################
                 g_opt.zero_grad()
 
+                noise = torch.randn(b_size, self.z_dim).to(self.device)
+                fake_batch = self.gen(noise)
                 ae_fake = self.ae(fake_batch)
 
                 gen_loss = self._gen_loss(fake_batch,
@@ -112,6 +119,8 @@ class Began(nn.Module):
                 ##################################
                 # Validation
                 ##################################
+                self._k_update(ae_real_loss, ae_fake_loss)
+
                 measure_loss = self.measure_loss(real_batch,
                                                  ae_real,
                                                  fake_batch,
@@ -122,3 +131,6 @@ class Began(nn.Module):
                 print(f'Epoch [{i}/{n_epochs}], batch [{j}/{len(trainloader)}] \n'
                       f'Loss {round(measure_loss.item(), 4)} \n'
                       f'Batch time {round(stop_time, 5)}')
+
+            D_scheduler.step(measure_loss)
+            G_scheduler.step(measure_loss)

@@ -22,7 +22,10 @@ class CondResBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
         if not resize:
-            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=dilation, dilation=dilation)
+            if dilation:
+                self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, dilation=dilation, padding=dilation)
+            else:
+                self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
             self.shortcut = None
 
         else:
@@ -31,12 +34,13 @@ class CondResBlock(nn.Module):
                 CondBatchNorm2d(n_classes=n_classes,
                                 n_features=out_channels)
             ])
-            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, padding=1)
+            self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=2, dilation=dilation,
+                                   padding=dilation)
 
         self.norm1 = CondBatchNorm2d(n_classes=n_classes,
-                                     n_features=out_channels)
+                                     n_features=in_channels)
         self.norm2 = CondBatchNorm2d(n_classes=n_classes,
-                                     n_features=out_channels)
+                                     n_features=in_channels)
 
     def forward(self, x, y):
         """
@@ -52,10 +56,10 @@ class CondResBlock(nn.Module):
             shortcut = x
 
         # (B x C x W x H) -> (B x C x W x H)
-        out = self.act(self.norm1(self.conv1(x), y))
+        out = self.act(self.conv1(self.norm1(x), y))
 
         # (B x C x W x H) -> (B x C x W/2 x H/2)
-        out = self.act(self.norm2(self.conv2(out), y))
+        out = self.act(self.conv2(self.norm2(out), y))
         out = out + shortcut
 
         return self.act(out)

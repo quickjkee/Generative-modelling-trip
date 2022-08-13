@@ -124,7 +124,7 @@ docker build dockerfiles/Dockerfile
 - Code
   - [Put](./began). Realization of BEGAN
 - Results
-  - MNIST (easy to get mode collapse, still cant fix)
+  - MNIST
       <p align="center">
       <img src="data/imgs/began_mnist.png" alt="drawing" width="340"/>
       </p>
