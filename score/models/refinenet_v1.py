@@ -11,6 +11,7 @@ class RefineNet(nn.Module):
 
         self.inp_conv = nn.Conv2d(in_channels, channels, kernel_size=3, stride=1, padding=1)
         self.out_conv = nn.Conv2d(channels, in_channels, kernel_size=3, stride=1, padding=1)
+        self.norm = nn.InstanceNorm2d(channels)
         self.act = nn.ELU()
 
         self.res1 = nn.ModuleList([
@@ -106,6 +107,6 @@ class RefineNet(nn.Module):
         # -> (B x C x H x W)
         out = self.refnet1([layer1, ref2])
 
-        out = self.out_conv(self.act(out))
+        out = self.out_conv(self.act(self.norm(out)))
 
         return out

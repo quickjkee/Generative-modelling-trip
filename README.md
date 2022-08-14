@@ -68,7 +68,7 @@ docker build dockerfiles/Dockerfile
       <img src="data/imgs/score.png" alt="drawing" width="340"/>
       </p>
       <p align="center">
-      <img src="data/imgs/cifar10_score.png" alt="drawing" width="340"/>
+      <img src="data/imgs/cifar10_score.png" alt="drawing" width="240"/>
       </p>
 
 -------------

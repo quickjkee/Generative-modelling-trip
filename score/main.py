@@ -1,10 +1,10 @@
 import torch
 import argparse
-import matplotlib.pyplot as plt
 import torchvision
 import os
 
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 
 from annealed_langevin import sample_anneal_langevin
 from models.refinenet_v2 import RefineNet
@@ -71,8 +71,8 @@ if __name__ == '__main__':
     # Training part
     # -------
 
-    #out = ncsn.fit(trainloader=trainloader,
-    #               n_epochs=n_epochs)
+    out = ncsn.fit(trainloader=trainloader,
+                   n_epochs=n_epochs)
 
     # --------
     # Validation part
@@ -89,7 +89,6 @@ if __name__ == '__main__':
         size = (b_size, in_channels, img_size, img_size)
         objects = ncsn.sample(size)[-1]
         with torch.no_grad():
-            for obj in objects:
-                img = torch.reshape(obj.to('cpu'), (img_size, img_size, in_channels))
-                plt.imsave("{}/{}.png".format(path, i), img, cmap="gray_r")
-                i += 1
+            img = objects.to('cpu')
+            save_image(img, "{}/{}.png".format(path, i))
+            i += 1
