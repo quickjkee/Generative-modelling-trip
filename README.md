@@ -19,6 +19,7 @@ docker build dockerfiles/Dockerfile
 * [Energy based models](#energy-based-models)
 * Score based models
   * [Noise conditional score model](#noise-conditional-score-model)
+  * [Denoising Diffusion Probabilistic Models]()
 * Variational Auto Encoders
   * [Traditional VAE](#variational-auto-encoders) 
   * [VAE with normalizing flows](#variational-auto-encoder-with-normalizing-flow)
@@ -70,6 +71,17 @@ docker build dockerfiles/Dockerfile
       <p align="center">
       <img src="data/imgs/cifar10_score.png" alt="drawing" width="240"/>
       </p>
+
+-------------
+### Denoising Diffusion Probabilistic Models
+
+- Theory
+    - [Put](./ddpm/theory/DDPM.pdf). My notes about DDPM
+    - [Must read](https://arxiv.org/abs/2006.11239). Original paper about score based generative models.
+    - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
+- Code
+    - [Put](./ddpm). Realization of the DDPM.
+- Results in progess
 
 -------------
 ### Variational Auto Encoders
