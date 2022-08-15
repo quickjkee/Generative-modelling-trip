@@ -19,7 +19,7 @@ docker build dockerfiles/Dockerfile
 * [Energy based models](#energy-based-models)
 * Score based models
   * [Noise conditional score model](#noise-conditional-score-model)
-  * [Denoising Diffusion Probabilistic Models]()
+  * [Denoising Diffusion Probabilistic Models](#denoising-diffusion-probabilistic-models)
 * Variational Auto Encoders
   * [Traditional VAE](#variational-auto-encoders) 
   * [VAE with normalizing flows](#variational-auto-encoder-with-normalizing-flow)
