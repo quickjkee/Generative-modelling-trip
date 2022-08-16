@@ -38,12 +38,12 @@ class NCSN(nn.Module):
         self.used_sigma = None
         self.noise = None
 
-    def _checkpoint(self):
-        dir = f'{self.data_path}/models/NCSN'
+    def _checkpoint(self, i):
+        dir = f'{self.data_path}/models_check'
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        torch.save(self.score_nn.state_dict(), dir)
+        torch.save(self.score_nn.state_dict(), dir + f'/ncsn_v2_iter{i}')
 
     def _dsm_loss(self, score):
         """
@@ -136,4 +136,4 @@ class NCSN(nn.Module):
                       f'Loss {type} = {round(loss.item(), 4)} \n'
                       f'Time for batch {round(end_time, 3)}')
 
-            self._checkpoint()
+            self._checkpoint(i)

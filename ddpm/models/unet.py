@@ -5,7 +5,7 @@ from models.layers import UpSample, DownSample, UnetBlock, EmbLayer, Swish
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, n_blocks, n_channels, ch_mults):
+    def __init__(self, in_channels, n_channels, ch_mults, n_blocks=2):
         """
         :param in_channels: (Int), number of channels in input image
         :param n_blocks: (Int), number of UNet blocks

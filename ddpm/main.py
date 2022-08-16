@@ -1,15 +1,91 @@
-from models.unet import UNet
 import torch
+import argparse
+import torchvision
+import os
 
-unet = UNet(in_channels=3,
-            n_blocks=2,
-            n_channels=128,
-            ch_mults=[1, 2, 2, 2])
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 
-x = torch.randn(32, 3, 32, 32)
-t = torch.randn(32)
+from models.unet import UNet
+from ddpm import DDPM
 
-pytorch_total_params = sum(p.numel() for p in unet.parameters())
+if __name__ == '__main__':
 
-print(pytorch_total_params)
-print(unet(x, t).size())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--n_epochs", type=int, default=1000, help='number of epochs of training')
+    parser.add_argument("--in_channels", type=int, default=3, help='number of channels in image')
+    parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
+    parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
+    parser.add_argument('--img_size', type=float, default=32, help='size of input image')
+    parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
+    parser.add_argument('--conv_dim', nargs='+', type=int, help='channel size', default=128)
+    parser.add_argument('--ch_mults', type=list, help='scale factor for conv dim', default=[1, 2, 2, 2])
+    parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=1000)
+    parser.add_argument('--n_valid', type=int, default=512, help='number of samples to validate')
+    opt = parser.parse_args()
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    # Params
+    conv_dim = opt.conv_dim
+    in_channels = opt.in_channels
+    img_size = opt.img_size
+    b_size = opt.b_size
+    n_epochs = opt.n_epochs
+    ch_mults = opt.ch_mults
+    data_path = opt.data_path
+    n_noise = opt.n_noise
+    n_valid = opt.n_valid
+
+    # ------------
+    # Data preparation
+    # ------------
+    trainset = torchvision.datasets.CIFAR10(root=data_path, train=True,
+                                            download=True,
+                                            transform=torchvision.transforms.Compose([
+                                                torchvision.transforms.ToTensor(),
+                                                torchvision.transforms.Resize([img_size, img_size]),
+                                                torchvision.transforms.Normalize(
+                                                    (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                            ])
+                                            )
+
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=b_size,
+                                              shuffle=True, num_workers=2)
+
+    # --------
+    # Model preparation
+    # -------
+
+    unet = UNet(in_channels=in_channels,
+                n_channels=conv_dim,
+                ch_mults=ch_mults)
+    ddpm = DDPM(score_nn=unet,
+                data_path=data_path,
+                device=device)
+
+    # --------
+    # Training part
+    # -------
+
+    out = ddpm.fit(trainloader=trainloader,
+                   n_epochs=n_epochs)
+
+    # --------
+    # Validation part
+    # -------
+
+    dir = f'{data_path}/sampling/ddpm'
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+    path = f'{data_path}/sampling/ddpm'
+
+    i = 0
+    for _ in range(int(n_valid / b_size)):
+        size = (b_size, in_channels, img_size, img_size)
+        objects = ddpm.sample(size)
+        with torch.no_grad():
+            img = objects.to('cpu')
+            save_image(img, "{}/{}.png".format(path, i))
+            i += 1
