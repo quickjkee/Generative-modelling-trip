@@ -27,6 +27,7 @@ class DDPM(nn.Module):
         self.T = T
         self.alphas = 1 - self.betas
 
+    @torch.no_grad()
     def _alpha_bar(self, t):
         """
         Calculation alpha with bar
@@ -79,7 +80,10 @@ class DDPM(nn.Module):
         x = torch.randn(size).to(self.device)
 
         for t in reversed(range(self.T)):
-            z = torch.randn(size).to(self.device)
+            if t == 0:
+                z = 0
+            else:
+                z = torch.randn(size).to(self.device)
             t = torch.tensor([t] * size[0])
             eps = self.score_nn(x, t)
 

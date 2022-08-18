@@ -24,7 +24,7 @@ class UNet(nn.Module):
         self.n_embed = n_channels * 4
 
         self.attn = [False] * self.n_resol
-        self.attn[-1], self.attn[-2] = True, True
+        self.attn[1] = True
 
         self.sampling = {
             'middle': UpSample,
