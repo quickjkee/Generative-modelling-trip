@@ -93,9 +93,12 @@ class DDPM(nn.Module):
             x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
                 1 - alpha) * z
 
-        return x
+        return torch.clip(x, -1.0, 1.0)
 
     def fit(self, n_epochs, trainloader):
+        n_params = sum(p.numel() for p in self.score_nn.parameters())
+        print(f'Number of parameters is {n_params}')
+
         opt = torch.optim.Adam(lr=2e-4, params=self.score_nn.parameters())
 
         for i in range(n_epochs):
@@ -106,7 +109,7 @@ class DDPM(nn.Module):
 
                 x0 = batch[0].to(self.device)
                 t = torch.randint(high=self.T, size=(size[0],))
-                eps = torch.rand(size)
+                eps = torch.randn(size)
 
                 eps_approx = self.forward(x0, t, eps)
                 loss = self.loss(eps_approx, eps)

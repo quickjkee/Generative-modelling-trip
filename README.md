@@ -81,7 +81,11 @@ docker build dockerfiles/Dockerfile
     - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
 - Code
     - [Put](./ddpm). Realization of the DDPM.
-- Results in progess
+- Results
+      <p align="center">
+      <img src="data/imgs/ddpm_mnist.png" alt="drawing" width="340"/>
+      </p>
+
 
 -------------
 ### Variational Auto Encoders
