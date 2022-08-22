@@ -85,6 +85,9 @@ docker build dockerfiles/Dockerfile
       <p align="center">
       <img src="data/imgs/ddpm_mnist.png" alt="drawing" width="340"/>
       </p>
+      <p align="center">
+      <img src="data/imgs/ddpm_cifar.png" alt="drawing" width="240"/>
+      </p>
 
 
 -------------
