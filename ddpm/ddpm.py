@@ -84,7 +84,7 @@ class DDPM(nn.Module):
                 z = 0
             else:
                 z = torch.randn(size).to(self.device)
-            t = torch.tensor([t] * size[0])
+            t = torch.tensor([t] * size[0]).to(self.device)
             eps = self.score_nn(x, t)
 
             alpha = self.alphas[t][:, None, None, None]
@@ -108,8 +108,8 @@ class DDPM(nn.Module):
                 size = batch[0].size()
 
                 x0 = batch[0].to(self.device)
-                t = torch.randint(high=self.T, size=(size[0],))
-                eps = torch.randn(size)
+                t = torch.randint(high=self.T, size=(size[0],)).to(self.device)
+                eps = torch.randn(size).to(self.device)
 
                 eps_approx = self.forward(x0, t, eps)
                 loss = self.loss(eps_approx, eps)

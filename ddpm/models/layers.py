@@ -190,7 +190,7 @@ class AttLayerMLP(nn.Module):
         """
         super(AttLayerMLP, self).__init__()
 
-        self.att_dim = n_channels
+        self.att_dim = n_channels * 5
         self.scale = self.att_dim ** (-0.5)
         self.n_heads = n_heads
 
