@@ -32,7 +32,11 @@ class DDPM(nn.Module):
         self.alphas = 1 - self.betas
 
         self.n_batches = 10
-        self._fids = []
+
+        if os.path.exists(f'{data_path}/fid_results/ddpm_fids.txt'):
+            self._fids = list(np.loadtxt(f'{data_path}/fid_results/ddpm_fids.txt'))
+        else:
+            self._fids = []
 
     @torch.no_grad()
     def _alpha_bar(self, t):

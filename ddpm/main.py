@@ -60,6 +60,7 @@ if __name__ == '__main__':
     unet = UNet(in_channels=in_channels,
                 n_channels=conv_dim,
                 ch_mults=ch_mults)
+    #unet.load_state_dict(torch.load(f'{data_path}/models_check/ddpm_iter0'))
     ddpm = DDPM(score_nn=unet,
                 data_path=data_path,
                 device=device)
