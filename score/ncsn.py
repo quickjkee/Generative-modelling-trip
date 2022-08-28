@@ -43,7 +43,7 @@ class NCSN(nn.Module):
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        torch.save(self.score_nn.state_dict(), dir + f'/ncsn_v2_iter{i}')
+        torch.save(self.score_nn.state_dict(), dir + f'/ncsn_v2_iter{0}')
 
     def _dsm_loss(self, score):
         """

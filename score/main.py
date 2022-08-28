@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
     parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
-    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=64)
+    parser.add_argument('--conv_dims', nargs='+', type=int, help='channel size', default=128)
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=10)
     parser.add_argument('--n_valid', type=int, default=128, help='number of samples from noise')
     opt = parser.parse_args()
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     i = 0
     for _ in range(int(n_valid / b_size)):
         size = (b_size, in_channels, img_size, img_size)
-        objects = ncsn.sample(size)[-1]
+        objects = (ncsn.sample(size)[-1] + 1.0) / 2
         with torch.no_grad():
             img = objects.to('cpu')
             save_image(img, "{}/{}.png".format(path, i))

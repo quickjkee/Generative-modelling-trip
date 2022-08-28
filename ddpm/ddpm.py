@@ -3,6 +3,10 @@ import torch
 import time
 import os
 import torch.nn.functional as F
+import numpy as np
+
+from torch.utils.data import TensorDataset, DataLoader, Subset
+from utils.fid import fid
 
 
 class DDPM(nn.Module):
@@ -26,6 +30,9 @@ class DDPM(nn.Module):
 
         self.T = T
         self.alphas = 1 - self.betas
+
+        self.n_batches = 10
+        self._fids = []
 
     @torch.no_grad()
     def _alpha_bar(self, t):
@@ -63,37 +70,86 @@ class DDPM(nn.Module):
 
         return loss
 
-    def _checkpoint(self, i):
+    def _checkpoint(self):
         dir = f'{self.data_path}/models_check'
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        torch.save(self.score_nn.state_dict(), dir + f'/ddpm_iter{i}')
+        torch.save(self.score_nn.state_dict(), dir + f'/ddpm_iter{0}')
 
     @torch.no_grad()
-    def sample(self, size):
+    def _calculate_fid(self, dataloader, size, n_batches):
         """
-        Size of sample
-        :param size: (Tuple), [n_samples x C x W x H]
-        :return: (Tensor), [n_samples x C x W x H]
+        Calculation FID
+        :param dataloader: (nn.Dataloder), true data
+        :param size: (Tuple), size of data
+        :param n_batches: (Int), number of batches to calculate
+        :return: (Float), calculated FID score
         """
-        x = torch.randn(size).to(self.device)
+        z = torch.randn(size).to(self.device)
 
+        # Creating sub loader from dataloader to calculate fid
+        true_dataset = dataloader.dataset
+        indices = np.arange(len(true_dataset))[:n_batches * size[0]]
+        np.random.shuffle(indices)
+
+        true_dataset_part = Subset(true_dataset, indices)
+        trueloader = DataLoader(true_dataset_part, batch_size=size[0])
+
+        # Creating test loader
+        testloader = DataLoader(TensorDataset(self.sample(z, n_batches)), batch_size=size[0])
+
+        fid_ = fid(trueloader, testloader, size[0], self.device)
+        self._fids.append(round(fid_, 3))
+
+        print(f'Calculated fids {self._fids}')
+
+        dir = f'{self.data_path}/fid_results'
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        np.savetxt(dir + f'/ddpm_fids.txt', np.array(self._fids))
+
+        return fid_
+
+    # Sampling for one batch
+    @torch.no_grad()
+    def batch_sample(self, x):
         for t in reversed(range(self.T)):
             if t == 0:
                 z = 0
             else:
-                z = torch.randn(size).to(self.device)
-            t = torch.tensor([t] * size[0]).to(self.device)
-            eps = self.score_nn(x, t)
+                z = torch.randn_like(x).to(self.device)
+                t = torch.tensor([t] * x.size(0)).to(self.device)
+                eps = self.score_nn(x, t)
 
-            alpha = self.alphas[t][:, None, None, None]
-            alpha_bar = self._alpha_bar(t)[:, None, None, None]
+                alpha = self.alphas[t][:, None, None, None]
+                alpha_bar = self._alpha_bar(t)[:, None, None, None]
 
-            x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
-                1 - alpha) * z
+                x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
+                    1 - alpha) * z
 
         return torch.clip(x, -1.0, 1.0)
+
+    @torch.no_grad()
+    def sample(self, x, n_batches):
+        """
+        Size of sample
+        :param x: (Tensor), [b_size x C x W x H], random input object
+        :return: (Tensor), [n_batches * b_size x C x W x H]
+        """
+        x = x.to(self.device)
+
+        samples = None
+        for _ in range(n_batches):
+            out = self.batch_sample(x)
+
+            if samples is None:
+                samples = out
+            else:
+                samples = torch.cat((samples, out), dim=0)
+
+        return samples
 
     def fit(self, n_epochs, trainloader):
         n_params = sum(p.numel() for p in self.score_nn.parameters())
@@ -124,4 +180,7 @@ class DDPM(nn.Module):
                       f'Loss {round(loss.item(), 5)} \n'
                       f'Batch time {round(end_time, 5)}')
 
-            self._checkpoint(i)
+            self._checkpoint()
+
+            if i % 20 == 0:
+                self._calculate_fid(trainloader, batch[0].size(), self.n_batches)

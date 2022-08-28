@@ -84,7 +84,8 @@ if __name__ == '__main__':
     i = 0
     for _ in range(int(n_valid / b_size)):
         size = (b_size, in_channels, img_size, img_size)
-        objects = (ddpm.sample(size) + 1.0) / 2
+        z = torch.randn(size)
+        objects = (ddpm.batch_sample(z) + 1.0) / 2
         with torch.no_grad():
             img = objects.to('cpu')
             save_image(img.float(), "{}/{}.png".format(path, i))
