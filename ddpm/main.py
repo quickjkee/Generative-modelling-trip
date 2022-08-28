@@ -87,5 +87,5 @@ if __name__ == '__main__':
         objects = (ddpm.sample(size) + 1.0) / 2
         with torch.no_grad():
             img = objects.to('cpu')
-            save_image(img, "{}/{}.png".format(path, i))
+            save_image(img.float(), "{}/{}.png".format(path, i))
             i += 1
