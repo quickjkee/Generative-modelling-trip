@@ -108,7 +108,7 @@ class DDPM(nn.Module):
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        np.savetxt(dir + f'/ddpm_fids.txt', np.array(self._fids))
+        np.savetxt(dir + f'/ddpm_fids.txt', np.array(self._fids), delimiter=',')
 
         return fid_
 
