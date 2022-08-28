@@ -19,7 +19,7 @@ class DDPM(nn.Module):
         """
         super(DDPM, self).__init__()
 
-        self.score_nn = score_nn
+        self.score_nn = score_nn.to(device)
         self.device = device
         self.data_path = data_path
 

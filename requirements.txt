@@ -2,3 +2,5 @@ torch
 argparse
 matplotlib
 torchvision
+tqdm
+scipy
