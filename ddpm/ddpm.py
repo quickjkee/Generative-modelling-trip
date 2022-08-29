@@ -7,6 +7,7 @@ import numpy as np
 
 from torch.utils.data import TensorDataset, DataLoader, Subset
 from utils.fid import fid
+from tqdm import tqdm
 
 
 class DDPM(nn.Module):
@@ -119,7 +120,7 @@ class DDPM(nn.Module):
     # Sampling for one batch
     @torch.no_grad()
     def batch_sample(self, x):
-        for t in reversed(range(self.T)):
+        for t in tqdm(reversed(range(self.T))):
             if t == 0:
                 z = 0
             else:

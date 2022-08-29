@@ -85,7 +85,7 @@ if __name__ == '__main__':
     i = 0
     for _ in range(int(n_valid / b_size)):
         size = (b_size, in_channels, img_size, img_size)
-        z = torch.randn(size)
+        z = torch.randn(size).to(device)
         objects = (ddpm.batch_sample(z) + 1.0) / 2
         with torch.no_grad():
             img = objects.to('cpu')
