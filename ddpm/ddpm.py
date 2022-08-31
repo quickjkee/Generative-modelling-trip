@@ -31,6 +31,7 @@ class DDPM(nn.Module):
 
         self.T = T
         self.alphas = 1 - self.betas
+        self.alphas_bar = torch.cumprod(self.alphas, dim=0)
 
         self.n_batches = 10
 
@@ -38,18 +39,6 @@ class DDPM(nn.Module):
             self._fids = list(np.loadtxt(f'{data_path}/fid_results/ddpm_fids.txt'))
         else:
             self._fids = []
-
-    @torch.no_grad()
-    def _alpha_bar(self, t):
-        """
-        Calculation alpha with bar
-        :param t: (Tensor), [b_size], time labels
-        :return: (Tensor), [b_size]
-        """
-        if not torch.is_tensor(t):
-            t = torch.tensor(t)
-
-        return torch.stack([torch.prod(self.alphas[:idx + 1]) for idx in t])
 
     def forward(self, x0, t, eps):
         """
@@ -59,7 +48,7 @@ class DDPM(nn.Module):
         :param t: (Tensor), [b_size], time labels
         :return: (Tensor), [b_size x C x W x H], score
         """
-        alphas_bar = self._alpha_bar(t)[:, None, None, None]
+        alphas_bar = self.alphas_bar[t][:, None, None, None]
         inp = torch.sqrt(alphas_bar) * x0 + torch.sqrt(1 - alphas_bar) * eps
         out = self.score_nn(inp, t)
 
@@ -80,7 +69,7 @@ class DDPM(nn.Module):
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        torch.save(self.score_nn.state_dict(), dir + f'/ddpm_iter{0}')
+        torch.save(self.score_nn.state_dict(), dir + f'/ddpm_iter{0}.pkl')
 
     @torch.no_grad()
     def _calculate_fid(self, dataloader, size, n_batches):
@@ -93,13 +82,8 @@ class DDPM(nn.Module):
         """
         z = torch.randn(size).to(self.device)
 
-        # Creating sub loader from dataloader to calculate fid
-        true_dataset = dataloader.dataset
-        indices = np.arange(len(true_dataset))[:n_batches * size[0]]
-        np.random.shuffle(indices)
-
-        true_dataset_part = Subset(true_dataset, indices)
-        trueloader = DataLoader(true_dataset_part, batch_size=size[0])
+        # True data
+        trueloader = dataloader
 
         # Creating test loader
         testloader = DataLoader(TensorDataset(self.sample(z, n_batches)), batch_size=size[0])
@@ -129,12 +113,12 @@ class DDPM(nn.Module):
                 eps = self.score_nn(x, t)
 
                 alpha = self.alphas[t][:, None, None, None]
-                alpha_bar = self._alpha_bar(t)[:, None, None, None]
+                alpha_bar = self.alphas_bar[t][:, None, None, None]
 
                 x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
                     1 - alpha) * z
 
-        return torch.clip(x, -1.0, 1.0)
+        return (torch.clip(x, -1.0, 1.0) + 1) / 2
 
     @torch.no_grad()
     def sample(self, x, n_batches):

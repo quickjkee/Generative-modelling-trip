@@ -22,6 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--ch_mults', type=list, help='scale factor for conv dim', default=[1, 2, 2, 2])
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=1000)
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples to validate')
+    parser.add_argument('--parallel', type=bool, default=False, help='use DataParallel')
+    parser.add_argument('--from_check', type=bool, default=False, help='use checkpoints')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -33,8 +35,10 @@ if __name__ == '__main__':
     b_size = opt.b_size
     n_epochs = opt.n_epochs
     ch_mults = opt.ch_mults
+    parallel = opt.parallel
     data_path = opt.data_path
     n_noise = opt.n_noise
+    from_check = opt.from_check
     n_valid = opt.n_valid
 
     # ------------
@@ -56,11 +60,15 @@ if __name__ == '__main__':
     # --------
     # Model preparation
     # -------
-
     unet = UNet(in_channels=in_channels,
                 n_channels=conv_dim,
                 ch_mults=ch_mults)
-    #unet.load_state_dict(torch.load(f'{data_path}/models_check/ddpm_iter0'))
+    if from_check:
+        checkpoint = torch.load(f'{data_path}/models_check/ddpm_iter0.pkl', map_location='cpu')
+        if parallel:
+            checkpoint = {key.replace("module.", ""): value for key, value in checkpoint.items()}
+        unet.load_state_dict(checkpoint)
+
     ddpm = DDPM(score_nn=unet,
                 data_path=data_path,
                 device=device)
@@ -86,7 +94,7 @@ if __name__ == '__main__':
     for _ in range(int(n_valid / b_size)):
         size = (b_size, in_channels, img_size, img_size)
         z = torch.randn(size).to(device)
-        objects = (ddpm.batch_sample(z) + 1.0) / 2
+        objects = ddpm.batch_sample(z)
         with torch.no_grad():
             img = objects.to('cpu')
             save_image(img.float(), "{}/{}.png".format(path, i))
