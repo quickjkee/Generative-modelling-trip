@@ -20,7 +20,7 @@ class DDPM(nn.Module):
         """
         :param score_nn: (nn.Module), score networks
         :param copy_score_nn: (nn.Module), copy of score to make EMA
-        :param betas: magnitudes of nosie
+        :param betas: magnitudes of noise
         :param data_path: (String), path to data with dataset
         :param T: (Int), number of noise levels
         :param device: current working device
@@ -107,7 +107,7 @@ class DDPM(nn.Module):
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        samples = next(iter(loader))
+        samples = next(iter(loader))[0]
         img = samples.to('cpu')
         save_image(img.float(), "{}/{}.png".format(dir, i))
 
