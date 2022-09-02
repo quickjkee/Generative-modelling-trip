@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import argparse
 import torchvision
@@ -17,16 +19,18 @@ if __name__ == '__main__':
     parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
-    parser.add_argument('--data_path', type=str, default='../data', help='path of downloaded data')
-    parser.add_argument('--conv_dim', nargs='+', type=int, help='channel size', default=128)
+    parser.add_argument('--data_path', type=str, default='../data', help='path to downloaded dataset')
+    parser.add_argument('--conv_dim', nargs='+', type=int, help='channel size', default=32)
     parser.add_argument('--ch_mults', type=list, help='scale factor for conv dim', default=[1, 2, 2, 2])
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=1000)
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples to validate')
     parser.add_argument('--parallel', type=bool, default=False, help='use DataParallel')
-    parser.add_argument('--from_check', type=bool, default=False, help='use checkpoints')
+    parser.add_argument('--from_check', type=int, default=0, help='number of checkpoint, if false - 0')
+    parser.add_argument('--n_eval', type=int, default=30, help='epochs to evaluate')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Number of GPU devices is {torch.cuda.device_count()}')
 
     # Params
     conv_dim = opt.conv_dim
@@ -39,6 +43,7 @@ if __name__ == '__main__':
     data_path = opt.data_path
     n_noise = opt.n_noise
     from_check = opt.from_check
+    n_eval = opt.n_eval
     n_valid = opt.n_valid
 
     # ------------
@@ -64,13 +69,15 @@ if __name__ == '__main__':
                 n_channels=conv_dim,
                 ch_mults=ch_mults)
     if from_check:
-        checkpoint = torch.load(f'{data_path}/models_check/ddpm_iter0.pkl', map_location='cpu')
+        checkpoint = torch.load(f'{data_path}/models_check/ddpm_iter{from_check}.pkl', map_location='cpu')
         if parallel:
             checkpoint = {key.replace("module.", ""): value for key, value in checkpoint.items()}
         unet.load_state_dict(checkpoint)
 
     ddpm = DDPM(score_nn=unet,
+                copy_score_nn=copy.deepcopy(unet),
                 data_path=data_path,
+                n_eval=n_eval,
                 device=device)
 
     # --------

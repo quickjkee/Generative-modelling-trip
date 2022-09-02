@@ -5,23 +5,32 @@ import os
 import torch.nn.functional as F
 import numpy as np
 
-from torch.utils.data import TensorDataset, DataLoader, Subset
+from torch.utils.data import TensorDataset, DataLoader
+from torchvision.utils import save_image
 from utils.fid import fid
 from tqdm import tqdm
 
 
+def warmup_lr(step):
+    return min(step, 5000) / 5000
+
+
 class DDPM(nn.Module):
-    def __init__(self, score_nn, device, data_path, T=1000, betas=None):
+    def __init__(self, score_nn, copy_score_nn, device, data_path, n_eval, T=1000, betas=None):
         """
         :param score_nn: (nn.Module), score networks
+        :param copy_score_nn: (nn.Module), copy of score to make EMA
         :param betas: magnitudes of nosie
+        :param data_path: (String), path to data with dataset
         :param T: (Int), number of noise levels
         :param device: current working device
         """
         super(DDPM, self).__init__()
 
         self.score_nn = score_nn.to(device)
+        self.copy_score_nn = copy_score_nn.to(device)
         self.device = device
+        self.n_eval = n_eval
         self.data_path = data_path
 
         if betas is None:
@@ -34,6 +43,7 @@ class DDPM(nn.Module):
         self.alphas_bar = torch.cumprod(self.alphas, dim=0)
 
         self.n_batches = 10
+        self.ema_decay = 0.999
 
         if os.path.exists(f'{data_path}/fid_results/ddpm_fids.txt'):
             self._fids = list(np.loadtxt(f'{data_path}/fid_results/ddpm_fids.txt'))
@@ -64,15 +74,45 @@ class DDPM(nn.Module):
 
         return loss
 
-    def _checkpoint(self):
+    @torch.no_grad()
+    def _ema_update(self):
+        """
+        Updating weight of the copy model using EMA
+        """
+        source_dict = self.score_nn.state_dict()
+        target_dict = self.copy_score_nn.state_dict()
+        for key in source_dict.keys():
+            target_dict[key].data.copy_(
+                target_dict[key].data * self.ema_decay +
+                source_dict[key].data * (1 - self.ema_decay))
+
+    def _checkpoint(self, i):
+        """
+        Save current state of the model
+        :param i: (Int) number of epoch
+        """
         dir = f'{self.data_path}/models_check'
         if not os.path.exists(dir):
             os.mkdir(dir)
 
-        torch.save(self.score_nn.state_dict(), dir + f'/ddpm_iter{0}.pkl')
+        torch.save(self.copy_score_nn.state_dict(), dir + f'/ddpm_iter{i}.pkl')
+
+    def _save_samples(self, i, loader):
+        """
+        Save one batch sample
+        :param i: (Int) number of epoch
+        :param loader: (DataLoader)
+        """
+        dir = f'{self.data_path}/eval_samples'
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        samples = next(iter(loader))
+        img = samples.to('cpu')
+        save_image(img.float(), "{}/{}.png".format(dir, i))
 
     @torch.no_grad()
-    def _calculate_fid(self, dataloader, size, n_batches):
+    def _calculate_fid(self, i, dataloader, size, n_batches):
         """
         Calculation FID
         :param dataloader: (nn.Dataloder), true data
@@ -87,6 +127,8 @@ class DDPM(nn.Module):
 
         # Creating test loader
         testloader = DataLoader(TensorDataset(self.sample(z, n_batches)), batch_size=size[0])
+        # Save batch to validate
+        self._save_samples(i, testloader)
 
         fid_ = fid(trueloader, testloader, size[0], self.device)
         self._fids.append(round(fid_, 3))
@@ -110,7 +152,7 @@ class DDPM(nn.Module):
             else:
                 z = torch.randn_like(x).to(self.device)
                 t = torch.tensor([t] * x.size(0)).to(self.device)
-                eps = self.score_nn(x, t)
+                eps = self.copy_score_nn(x, t)
 
                 alpha = self.alphas[t][:, None, None, None]
                 alpha_bar = self.alphas_bar[t][:, None, None, None]
@@ -145,8 +187,12 @@ class DDPM(nn.Module):
         print(f'Number of parameters is {n_params}')
 
         opt = torch.optim.Adam(lr=2e-4, params=self.score_nn.parameters())
+        sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda=warmup_lr)
 
+        step = 1
         for i in range(n_epochs):
+
+            epoch_loss = 0.0
             for j, batch in enumerate(trainloader):
                 start_time = time.time()
 
@@ -161,15 +207,22 @@ class DDPM(nn.Module):
 
                 opt.zero_grad()
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    self.score_nn.parameters(), 1.)
+
                 opt.step()
+                sched.step()
 
+                self._ema_update()
+
+                step += 1
                 end_time = time.time() - start_time
+                epoch_loss += loss.item()
 
-                print(f'Epoch {i}/{n_epochs}, Batch {j}/{len(trainloader)} \n'
-                      f'Loss {round(loss.item(), 5)} \n'
-                      f'Batch time {round(end_time, 5)}')
+            print(f'Epoch {i}/{n_epochs}, Batch {j}/{len(trainloader)} \n'
+                  f'Loss {round(epoch_loss / len(trainloader), 5)} \n'
+                  f'Batch time {round(end_time, 5)}')
 
-            self._checkpoint()
-
-            if i % 20 == 0:
-                self._calculate_fid(trainloader, batch[0].size(), self.n_batches)
+            if i % self.n_eval == 0:
+                self._checkpoint(i)
+                self._calculate_fid(i, trainloader, batch[0].size(), self.n_batches)
