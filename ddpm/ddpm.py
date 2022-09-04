@@ -210,7 +210,7 @@ class DDPM(nn.Module):
 
             self._ema_update()
 
-            if step % (size[0] * len(trainloader)) == 0:
+            if step % (len(trainloader)) == 0:
                 print(f'Loss {round(loss.item() / len(trainloader), 5)}', flush=True)
 
             if step % self.n_eval == 0:
