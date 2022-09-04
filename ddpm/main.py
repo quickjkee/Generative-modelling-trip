@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
     parser.add_argument('--img_size', type=float, default=32, help='size of input image')
     parser.add_argument('--data_path', type=str, default='../data', help='path to downloaded dataset')
-    parser.add_argument('--conv_dim', nargs='+', type=int, help='channel size', default=32)
+    parser.add_argument('--conv_dim', nargs='+', type=int, help='channel size', default=128)
     parser.add_argument('--ch_mults', type=list, help='scale factor for conv dim', default=[1, 2, 2, 2])
     parser.add_argument('--n_noise', nargs='+', type=int, help='number of different level of noise', default=1000)
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples to validate')

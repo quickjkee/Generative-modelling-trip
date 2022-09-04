@@ -211,8 +211,8 @@ class DDPM(nn.Module):
             self._ema_update()
 
             if step % (len(trainloader)) == 0:
-                print(f'Loss {round(loss.item() / len(trainloader), 5)}', flush=True)
+                print(f'Loss {round(loss.item(), 5)}', flush=True)
 
             if step % self.n_eval == 0:
                 self._checkpoint(step)
-                self._calculate_fid(step, trainloader, batch[0].size(), self.n_batches)
+                self._calculate_fid(step, trainloader, size, self.n_batches)
