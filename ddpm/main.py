@@ -14,7 +14,7 @@ from ddpm import DDPM
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n_epochs", type=int, default=1000, help='number of epochs of training')
+    parser.add_argument("--n_steps", type=int, default=800000, help='number of epochs of training')
     parser.add_argument("--in_channels", type=int, default=3, help='number of channels in image')
     parser.add_argument("--b_size", type=int, default=128, help='size of the mini batch')
     parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_valid', type=int, default=512, help='number of samples to validate')
     parser.add_argument('--parallel', type=bool, default=False, help='use DataParallel')
     parser.add_argument('--from_check', type=int, default=0, help='number of checkpoint, if false - 0')
-    parser.add_argument('--n_eval', type=int, default=30, help='epochs to evaluate')
+    parser.add_argument('--n_eval', type=int, default=10000, help='step to evaluate')
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     in_channels = opt.in_channels
     img_size = opt.img_size
     b_size = opt.b_size
-    n_epochs = opt.n_epochs
+    n_steps = opt.n_steps
     ch_mults = opt.ch_mults
     parallel = opt.parallel
     data_path = opt.data_path
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     # -------
 
     out = ddpm.fit(trainloader=trainloader,
-                   n_epochs=n_epochs)
+                   n_steps=n_steps)
 
     # --------
     # Validation part

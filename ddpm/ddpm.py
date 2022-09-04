@@ -43,7 +43,7 @@ class DDPM(nn.Module):
         self.alphas_bar = torch.cumprod(self.alphas, dim=0)
 
         self.n_batches = 10
-        self.ema_decay = 0.999
+        self.ema_decay = 0.9999
 
         if os.path.exists(f'{data_path}/fid_results/ddpm_fids.txt'):
             self._fids = list(np.loadtxt(f'{data_path}/fid_results/ddpm_fids.txt'))
@@ -182,47 +182,37 @@ class DDPM(nn.Module):
 
         return samples
 
-    def fit(self, n_epochs, trainloader):
+    def fit(self, n_steps, trainloader):
         n_params = sum(p.numel() for p in self.score_nn.parameters())
         print(f'Number of parameters is {n_params}')
 
         opt = torch.optim.Adam(lr=2e-4, params=self.score_nn.parameters())
         sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda=warmup_lr)
 
-        step = 1
-        for i in range(n_epochs):
+        for step in tqdm(range(n_steps)):
 
-            epoch_loss = 0.0
-            for j, batch in enumerate(trainloader):
-                start_time = time.time()
+            batch = next(iter(trainloader))[0].to(self.device)
+            size = batch.size()
 
-                size = batch[0].size()
+            t = torch.randint(high=self.T, size=(size[0],)).to(self.device)
+            eps = torch.randn(size).to(self.device)
 
-                x0 = batch[0].to(self.device)
-                t = torch.randint(high=self.T, size=(size[0],)).to(self.device)
-                eps = torch.randn(size).to(self.device)
+            eps_approx = self.forward(batch, t, eps)
+            loss = self.loss(eps_approx, eps)
 
-                eps_approx = self.forward(x0, t, eps)
-                loss = self.loss(eps_approx, eps)
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                self.score_nn.parameters(), 1.)
 
-                opt.zero_grad()
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(
-                    self.score_nn.parameters(), 1.)
+            opt.step()
+            sched.step()
 
-                opt.step()
-                sched.step()
+            self._ema_update()
 
-                self._ema_update()
+            if step % (size[0] * len(trainloader)) == 0:
+                print(f'Loss {round(loss.item() / len(trainloader), 5)}', flush=True)
 
-                step += 1
-                end_time = time.time() - start_time
-                epoch_loss += loss.item()
-
-            print(f'Epoch {i}/{n_epochs}, Batch {j}/{len(trainloader)} \n'
-                  f'Loss {round(epoch_loss / len(trainloader), 5)} \n'
-                  f'Batch time {round(end_time, 5)}')
-
-            if i % self.n_eval == 0:
-                self._checkpoint(i)
-                self._calculate_fid(i, trainloader, batch[0].size(), self.n_batches)
+            if step % self.n_eval == 0:
+                self._checkpoint(step)
+                self._calculate_fid(step, trainloader, batch[0].size(), self.n_batches)

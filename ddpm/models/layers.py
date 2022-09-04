@@ -56,7 +56,7 @@ class PositionalEncoding(nn.Module):
 #############################
 
 class EmbLayer(nn.Module):
-    def __init__(self, n_embed=32, scale_fact=4):
+    def __init__(self, n_embed=512, scale_fact=4):
         """
         :param n_embed: (Int), dimension of embedded vector
         :param scale_fact: (Int), scaling for embedding layer
@@ -143,7 +143,7 @@ class ResBlock(nn.Module):
 #
 #############################
 
-class AttLayer(nn.Module):
+class AttLayerCNN(nn.Module):
     def __init__(self, in_ch):
         super().__init__()
         self.group_norm = nn.GroupNorm(32, in_ch)
@@ -181,14 +181,14 @@ class AttLayer(nn.Module):
         return x + h
 
 
-class AttLayerMLP(nn.Module):
+class AttLayer(nn.Module):
     def __init__(self, n_channels, n_heads=1):
         """
         :param n_channels: (Int), input channels
         :param n_heads: (Int), number of heads in attention
         :param n_groups: (Int), groups for normalization
         """
-        super(AttLayerMLP, self).__init__()
+        super(AttLayer, self).__init__()
 
         self.att_dim = n_channels * 5
         self.scale = self.att_dim ** (-0.5)
