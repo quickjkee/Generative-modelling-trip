@@ -30,7 +30,8 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    print(f'Number of GPU devices is {torch.cuda.device_count()}')
+    count = torch.cuda.device_count()
+    print(f'Number of GPU devices is {count}')
 
     # Params
     conv_dim = opt.conv_dim
@@ -38,13 +39,17 @@ if __name__ == '__main__':
     img_size = opt.img_size
     b_size = opt.b_size
     n_steps = opt.n_steps
-    ch_mults = opt.ch_mults
     parallel = opt.parallel
+    ch_mults = opt.ch_mults
     data_path = opt.data_path
     n_noise = opt.n_noise
     from_check = opt.from_check
     n_eval = opt.n_eval
     n_valid = opt.n_valid
+
+    if count > 1:
+        parallel = True
+        # b_size = b_size * count
 
     # ------------
     # Data preparation
@@ -60,19 +65,23 @@ if __name__ == '__main__':
                                             )
 
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=b_size,
-                                              shuffle=True, num_workers=2)
+                                              shuffle=True, num_workers=8)
 
     # --------
     # Model preparation
     # -------
     unet = UNet(in_channels=in_channels,
                 n_channels=conv_dim,
-                ch_mults=ch_mults)
+                ch_mults=ch_mults).to(device)
+
     if from_check:
         checkpoint = torch.load(f'{data_path}/models_check/ddpm_iter{from_check}.pkl', map_location='cpu')
         if parallel:
             checkpoint = {key.replace("module.", ""): value for key, value in checkpoint.items()}
         unet.load_state_dict(checkpoint)
+
+    if parallel:
+        unet = torch.nn.DataParallel(unet)
 
     ddpm = DDPM(score_nn=unet,
                 copy_score_nn=copy.deepcopy(unet),

@@ -143,7 +143,42 @@ class ResBlock(nn.Module):
 #
 #############################
 
-class AttLayerCNN(nn.Module):
+class LKA(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.conv0 = nn.Conv2d(dim, dim, 5, padding=2, groups=dim)
+        self.conv_spatial = nn.Conv2d(dim, dim, 7, stride=1, padding=9, groups=dim, dilation=3)
+        self.conv1 = nn.Conv2d(dim, dim, 1)
+
+    def forward(self, x):
+        u = x.clone()
+        attn = self.conv0(x)
+        attn = self.conv_spatial(attn)
+        attn = self.conv1(attn)
+
+        return u * attn
+
+
+class AttLayer(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+
+        self.proj_1 = nn.Conv2d(d_model, d_model, 1)
+        self.activation = nn.GELU()
+        self.spatial_gating_unit = LKA(d_model)
+        self.proj_2 = nn.Conv2d(d_model, d_model, 1)
+
+    def forward(self, x, t):
+        shorcut = x.clone()
+        x = self.proj_1(x)
+        x = self.activation(x)
+        x = self.spatial_gating_unit(x)
+        x = self.proj_2(x)
+        x = x + shorcut
+        return x
+
+
+class AttLayer2(nn.Module):
     def __init__(self, in_ch):
         super().__init__()
         self.group_norm = nn.GroupNorm(32, in_ch)
@@ -159,7 +194,7 @@ class AttLayerCNN(nn.Module):
             init.zeros_(module.bias)
         init.xavier_uniform_(self.proj.weight, gain=1e-5)
 
-    def forward(self, x, t):
+    def forward(self, x, _):
         B, C, H, W = x.shape
         h = self.group_norm(x)
         q = self.proj_q(h)
@@ -181,14 +216,14 @@ class AttLayerCNN(nn.Module):
         return x + h
 
 
-class AttLayer(nn.Module):
+class AttLayerMLP(nn.Module):
     def __init__(self, n_channels, n_heads=1):
         """
         :param n_channels: (Int), input channels
         :param n_heads: (Int), number of heads in attention
         :param n_groups: (Int), groups for normalization
         """
-        super(AttLayer, self).__init__()
+        super(AttLayerMLP, self).__init__()
 
         self.att_dim = n_channels * 5
         self.scale = self.att_dim ** (-0.5)
@@ -309,7 +344,7 @@ class UnetBlock(nn.Module):
             model.append(ResBlock(in_channels,
                                   out_channels,
                                   self.n_embed))
-            if self.is_attn and i != self.num_res - 1:
+            if self.is_attn:
                 model.append(AttLayer(self.out_channels))
             in_channels = out_channels
 
