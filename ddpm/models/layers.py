@@ -313,7 +313,7 @@ class UpSample(nn.Module):
 
 
 class UnetBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, n_embed, num_res=2, sample=None, is_attn=False):
+    def __init__(self, in_channels, out_channels, n_embed, num_res=4, sample=None, is_attn=False):
         """
         :param in_channels: (Int)
         :param out_channels: (Int)

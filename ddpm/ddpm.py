@@ -151,14 +151,15 @@ class DDPM(nn.Module):
                 z = 0
             else:
                 z = torch.randn_like(x).to(self.device)
-                t = torch.tensor([t] * x.size(0)).to(self.device)
-                eps = self.copy_score_nn(x, t)
 
-                alpha = self.alphas[t][:, None, None, None]
-                alpha_bar = self.alphas_bar[t][:, None, None, None]
+            t = torch.tensor([t] * x.size(0)).to(self.device)
+            eps = self.copy_score_nn(x, t)
 
-                x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
-                    1 - alpha) * z
+            alpha = self.alphas[t][:, None, None, None]
+            alpha_bar = self.alphas_bar[t][:, None, None, None]
+
+            x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
+                1 - alpha) * z
 
         return (torch.clip(x, -1.0, 1.0) + 1) / 2
 

@@ -5,10 +5,9 @@ from models.layers import UpSample, DownSample, UnetBlock, EmbLayer, Swish
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, n_channels, ch_mults, n_blocks=2):
+    def __init__(self, in_channels, n_channels, ch_mults):
         """
         :param in_channels: (Int), number of channels in input image
-        :param n_blocks: (Int), number of UNet blocks
         :param n_channels: (Int), number of channels in UNet layers
         :param ch_mults: (List), multiplication factor for n_channels
         """
@@ -18,7 +17,6 @@ class UNet(nn.Module):
         self.n_channels = n_channels
 
         self.ch_mults = ch_mults
-        self.n_blocks = n_blocks
 
         self.n_resol = len(ch_mults)
         self.n_embed = n_channels * 4
