@@ -146,6 +146,8 @@ class DDPM(nn.Module):
     # Sampling for one batch
     @torch.no_grad()
     def batch_sample(self, x):
+        self.copy_score_nn.eval()
+
         for t in tqdm(reversed(range(self.T))):
             if t == 0:
                 z = 0
@@ -160,6 +162,8 @@ class DDPM(nn.Module):
 
             x = 1 / torch.sqrt(alpha) * (x - (1 - alpha) / (torch.sqrt(1 - alpha_bar)) * eps) + torch.sqrt(
                 1 - alpha) * z
+
+        self.copy_score_nn.train()
 
         return (torch.clip(x, -1.0, 1.0) + 1) / 2
 
