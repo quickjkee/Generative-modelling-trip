@@ -36,6 +36,7 @@ class UNet(nn.Module):
         self.in_conv = nn.Conv2d(in_channels, n_channels, 3, 1, 1)
 
         self.act = Swish()
+        self.norm = nn.GroupNorm(32, n_channels)
         self.out_conv = nn.Conv2d(n_channels, in_channels, 3, 1, 1)
 
         self.down_blocks = self._make_blocks('down')
