@@ -23,6 +23,9 @@ class UNet(nn.Module):
 
         self.attn = [False] * self.n_resol
         self.attn[1] = True
+        self.num_res = {'down': 2,
+                        'middle': 2,
+                        'up': 3}
 
         self.sampling = {
             'middle': UpSample,
@@ -32,7 +35,6 @@ class UNet(nn.Module):
 
         self.in_conv = nn.Conv2d(in_channels, n_channels, 3, 1, 1)
 
-        self.norm = nn.GroupNorm(8, n_channels)
         self.act = Swish()
         self.out_conv = nn.Conv2d(n_channels, in_channels, 3, 1, 1)
 
@@ -78,6 +80,7 @@ class UNet(nn.Module):
             blocks.append(UnetBlock(in_,
                                     out,
                                     self.n_embed,
+                                    self.num_res[type],
                                     sample=sample,
                                     is_attn=is_attn[i]))
 

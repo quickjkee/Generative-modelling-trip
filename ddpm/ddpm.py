@@ -45,6 +45,9 @@ class DDPM(nn.Module):
         self.n_batches = 10
         self.ema_decay = 0.9999
 
+        if os.path.exists(f'{data_path}/stats'):
+            self._fid_cache = f'{data_path}/stats/cifar10.train.npz'
+
         if os.path.exists(f'{data_path}/fid_results/ddpm_fids.txt'):
             self._fids = list(np.loadtxt(f'{data_path}/fid_results/ddpm_fids.txt'))
         else:
@@ -112,7 +115,7 @@ class DDPM(nn.Module):
         save_image(img.float(), "{}/{}.png".format(dir, i))
 
     @torch.no_grad()
-    def _calculate_fid(self, i, dataloader, size, n_batches):
+    def _calculate_fid(self, i, size, n_batches):
         """
         Calculation FID
         :param dataloader: (nn.Dataloder), true data
@@ -122,15 +125,12 @@ class DDPM(nn.Module):
         """
         z = torch.randn(size).to(self.device)
 
-        # True data
-        trueloader = dataloader
-
         # Creating test loader
         testloader = DataLoader(TensorDataset(self.sample(z, n_batches)), batch_size=size[0])
         # Save batch to validate
         self._save_samples(i, testloader)
 
-        fid_ = fid(trueloader, testloader, size[0], self.device)
+        fid_ = fid(testloader, self._fid_cache, size[0], self.device)
         self._fids.append(round(fid_, 3))
 
         print(f'Calculated fids {self._fids}')
@@ -220,4 +220,4 @@ class DDPM(nn.Module):
 
             if step % self.n_eval == 0:
                 self._checkpoint(step)
-                self._calculate_fid(step, trainloader, size, self.n_batches)
+                self._calculate_fid(step, size, self.n_batches)

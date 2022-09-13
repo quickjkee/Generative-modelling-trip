@@ -7,7 +7,7 @@ from scipy import linalg
 from utils.inception import InceptionV3
 
 
-def fid(loader1, loader2, b_size=128, device='cpu', dims=2048):
+def fid(loader1, fid_cache, b_size=128, device='cpu', dims=2048):
     """
     Calculation FID between two dataloader
     :param loader1: (nn.DataLoader)
@@ -23,8 +23,9 @@ def fid(loader1, loader2, b_size=128, device='cpu', dims=2048):
 
     m1, s1 = compute_statistics(loader1, model, b_size,
                                 dims, device, 1)
-    m2, s2 = compute_statistics(loader2, model, b_size,
-                                dims, device, 1)
+    f = np.load(fid_cache)
+    m2, s2 = f['mu'][:], f['sigma'][:]
+    f.close()
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
     return fid_value
