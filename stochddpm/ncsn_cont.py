@@ -4,10 +4,11 @@ from tqdm import tqdm
 
 
 class NCSN(nn.Module):
-    def __init__(self, score_nn, copy_score_nn, device, data_path, sigma_max):
+    def __init__(self, score_nn, copy_score_nn, sampler, device, data_path, sigma_max):
         """
         :param score_nn: score network
         :param copy_score_nn: deep copy of the score network
+        :param sampler: sampler model with corrector and predictor
         :param device: current working device
         :param data_path: path to dataset
         :param sigma_max: maximum value of the sigma (depend on the dataset)
@@ -16,6 +17,7 @@ class NCSN(nn.Module):
 
         self.score_nn = score_nn
         self.copy_score_nn = copy_score_nn
+        self.sampler = sampler
 
         self.device = device
         self.data_path = data_path
@@ -25,10 +27,12 @@ class NCSN(nn.Module):
         self.t_min = 1e-5
         self.t_max = 1
 
+        self.T = 1000
+
     @torch.no_grad()
     def _sigma_calc(self, t):
         """
-        Calculation function sigma(t)
+        Calculation function sigma(t), variance of the q(x(t)|x(0))
         :param t: (Tensor), [b_size]
         :return: (Tensor), [b_size]
         """
@@ -50,15 +54,43 @@ class NCSN(nn.Module):
 
         return x_t, z
 
+    @torch.no_grad()
+    def p_sample(self, x):
+        """
+        Sampling from p_{theta}(x(0) | x(t))
+        :param x: (Tensor) [b_size x C x W x H]
+        :return: (Tensor) [b_size x C x W x H]
+        """
+
+        # Discretization of the continuous time
+        time_steps = torch.linspace(self.t_max, self.t_min, self.T).to(self.device)
+
+        for t in reversed(range(self.T - 1)):
+            # Sigmas calculation
+            sigma_t1 = self._sigma_calc(time_steps[t + 1])
+            sigma_t = self._sigma_calc(time_steps[t])
+
+            # Predictor step
+            score = self.score_nn(x, time_steps[t + 1])
+            x = self.sampler.predictor_step(x, score, sigma_t1, sigma_t)
+
+            # Corrector step
+            score = self.score_nn(x, time_steps[t])
+            x = self.sampler.corrector_step(x, score)
+
+        return x
+
     def loss(self, score_approx, score_true, sigma_t):
         """
         MSE loss for score matching
         :param score_approx: [b_size x C x W x H] approximation of the score
         :param score_true: [b_size x C x W x H] true score
+        :param sigma_t: [b_size]
         :return: (Float)
         """
-        loss = torch.sum((score_approx * sigma_t[:, None, None, None] ** 0.5 + score_true) ** 2, dim=(1, 2, 3)).mean()
-        return loss
+        loss = ((score_approx + score_true / sigma_t[:, None, None, None] ** 0.5) ** 2).mean(axis=(1, 2, 3))
+        weighted_loss = loss * sigma_t ** 2
+        return weighted_loss.mean()
 
     def fit(self, n_steps, trainloader):
         n_params = sum(p.numel() for p in self.score_nn.parameters())
