@@ -61,22 +61,28 @@ class NCSN(nn.Module):
         :param x: (Tensor) [b_size x C x W x H]
         :return: (Tensor) [b_size x C x W x H]
         """
+        self.score_nn.eval()
 
         # Discretization of the continuous time
-        time_steps = torch.linspace(self.t_max, self.t_min, self.T).to(self.device)
+        time_steps = torch.linspace(self.t_min, self.t_max, self.T).to(self.device)
 
         for t in reversed(range(self.T - 1)):
             # Sigmas calculation
-            sigma_t1 = self._sigma_calc(time_steps[t + 1])
-            sigma_t = self._sigma_calc(time_steps[t])
+            t1 = time_steps[t + 1].repeat(x.size(0))
+            t0 = time_steps[t].repeat(x.size(0))
+
+            sigma_t1 = self._sigma_calc(t1)
+            sigma_t = self._sigma_calc(t0)
 
             # Predictor step
-            score = self.score_nn(x, time_steps[t + 1])
+            score = self.score_nn(x, t1)
             x = self.sampler.predictor_step(x, score, sigma_t1, sigma_t)
 
             # Corrector step
-            score = self.score_nn(x, time_steps[t])
+            score = self.score_nn(x, t0)
             x = self.sampler.corrector_step(x, score)
+
+        self.score_nn.train()
 
         return x
 
@@ -98,7 +104,7 @@ class NCSN(nn.Module):
 
         opt = torch.optim.Adam(lr=2e-4, params=self.score_nn.parameters())
 
-        for step in tqdm(n_steps):
+        for step in tqdm(range(n_steps)):
             x_0 = next(iter(trainloader))[0].to(self.device)
             size = x_0.size()
 
@@ -110,6 +116,8 @@ class NCSN(nn.Module):
             score_true = z
 
             loss = self.loss(score_approx, score_true, sigma_t)
+
+            print(loss.item())
 
             opt.zero_grad()
             loss.backward()
