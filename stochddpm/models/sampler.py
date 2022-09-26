@@ -40,6 +40,6 @@ class Sampler(nn.Module):
         score_norm = torch.norm(score.reshape(score.shape[0], -1), dim=-1).mean()
         eps = (noise_norm / score_norm) ** 2 * 2 * self.r
 
-        x = x + eps * score + torch.sqrt(2 * eps)[:, None, None, None] * z
+        x = x + eps * score + torch.sqrt(2 * eps) * z
 
         return x
