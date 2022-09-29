@@ -114,10 +114,11 @@ class UNet(nn.Module):
 
         return x
 
-    def forward(self, x, t):
+    def forward(self, x, t, sigma_t):
         """
-        :param x: (Tensor), [b_size x C_in x W x H]
-        :param t: (Tensor), [b_size]
+        :param x: (Tensor), [b_size x C_in x W x H] noised objects
+        :param t: (Tensor), [b_size] timesteps
+        :sigma_t: (Tensor), [b_size] variance of the q
         :return: (Tensor), [b_size x C_in x W x H]
         """
         # [b_size] -> [b_size x n_embed]
@@ -132,4 +133,4 @@ class UNet(nn.Module):
 
         out = self.out_conv(self.act(self.norm(up_out)))
 
-        return out
+        return out / sigma_t ** 0.5

@@ -22,9 +22,9 @@ class PositionalEncoding(nn.Module):
     Fourier encoding
     """
 
-    def __init__(self, n_embed):
+    def __init__(self, n_embed, scale=30):
         super(PositionalEncoding, self).__init__()
-        self.proj = nn.Linear(1, n_embed // 2)
+        self.W = nn.Parameter(torch.randn(n_embed // 2) * scale, requires_grad=False)
 
     def forward(self, t):
         """
@@ -32,14 +32,14 @@ class PositionalEncoding(nn.Module):
         :return: (Tensor), [b_size x n_embed]
         """
         # [b x 1] -> [b x n_embed // 2]
-        embed = 2 * torch.pi * self.proj(t[:, None])
+        embed = t[:, None] * self.W[None, :] * 2 * torch.pi
 
         # [b x n_embed // 2] -> [b x n_embed // 2]
         out1 = torch.sin(embed)
         out2 = torch.cos(embed)
 
         # [b x n_embed // 2] -> [b x n_embed]
-        out = torch.cat((out1, out2), dim=1)
+        out = torch.cat((out1, out2), dim=-1)
 
         return out
 

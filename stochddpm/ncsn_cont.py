@@ -44,7 +44,7 @@ class NCSN(nn.Module):
     def q_sample(self, x_0, sigma_t):
         """
         Sampling from q(x(t) | x(0), t)
-        :param sigma_t: (Tensor), [b_size]
+        :param sigma_t: (Tensor), [b_size], var of the q
         :param x_0: (Tensor), [b_size x C x W x H], batch of real objects
         :return: (Tensor), [b_size x C x W x H]
         """
@@ -75,11 +75,11 @@ class NCSN(nn.Module):
             sigma_t = self._sigma_calc(t0)
 
             # Predictor step
-            score = self.score_nn(x, t1)
+            score = self.score_nn(x, t1, sigma_t1)
             x = self.sampler.predictor_step(x, score, sigma_t1, sigma_t)
 
             # Corrector step
-            score = self.score_nn(x, t0)
+            score = self.score_nn(x, t0, sigma_t)
             x = self.sampler.corrector_step(x, score)
 
         self.score_nn.train()
@@ -94,15 +94,14 @@ class NCSN(nn.Module):
         :param sigma_t: [b_size]
         :return: (Float)
         """
-        loss = ((score_approx + score_true / sigma_t[:, None, None, None] ** 0.5) ** 2).mean(axis=(1, 2, 3))
-        weighted_loss = loss * sigma_t ** 2
-        return weighted_loss.mean()
+        loss = ((score_approx * sigma_t[:, None, None, None] ** 0.5 + score_true ) ** 2).mean()
+        return loss
 
     def fit(self, n_steps, trainloader):
         n_params = sum(p.numel() for p in self.score_nn.parameters())
         print(f'Number of parameters is {n_params}')
 
-        opt = torch.optim.Adam(lr=2e-4, params=self.score_nn.parameters())
+        opt = torch.optim.Adam(lr=1e-4, params=self.score_nn.parameters())
 
         for step in tqdm(range(n_steps)):
             x_0 = next(iter(trainloader))[0].to(self.device)
@@ -112,7 +111,7 @@ class NCSN(nn.Module):
             sigma_t = self._sigma_calc(t)
             x_t, z = self.q_sample(x_0, sigma_t)
 
-            score_approx = self.score_nn(x_t, t)
+            score_approx = self.score_nn(x_t, t, sigma_t)
             score_true = z
 
             loss = self.loss(score_approx, score_true, sigma_t)

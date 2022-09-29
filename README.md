@@ -20,6 +20,7 @@ docker build dockerfiles/Dockerfile
 * Score based models
   * [Noise conditional score model](#noise-conditional-score-model)
   * [Denoising Diffusion Probabilistic Models](#denoising-diffusion-probabilistic-models)
+  * [Stochastic Score based Models](#score-based-models-through-sde)
 * Variational Auto Encoders
   * [Traditional VAE](#variational-auto-encoders) 
   * [VAE with normalizing flows](#variational-auto-encoder-with-normalizing-flow)
@@ -86,7 +87,23 @@ docker build dockerfiles/Dockerfile
       <img src="data/imgs/ddpm_mnist.png" alt="drawing" width="340"/>
       </p>
       <p align="center">
-      <img src="data/imgs/ddpm_cifar.png" alt="drawing" width="240"/>
+      <img src="data/imgs/ddpm_cifar.png" alt="drawing" width="205"/>
+      <img src="data/imgs/ddpm_celeba.png" alt="drawing" width="205"/>
+      </p>
+
+-------------
+### Score based models through SDE
+
+- Theory
+    - [Put](./stochddpm/theory/StochDDPM.pdf). My notes about stochastic ddpm
+    - [Must read](https://openreview.net/forum?id=PxTIG12RRHS). Original paper.
+    - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
+    - [Must watch](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing). Colab notebook with example
+- Code
+    - [Put](./stochddpm). Realization of the Stochastic DDPM
+- Results
+      <p align="center">
+      <img src="data/imgs/stoch_mnist.png" alt="drawing" width="340"/>
       </p>
 
 
