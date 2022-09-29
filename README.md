@@ -103,7 +103,7 @@ docker build dockerfiles/Dockerfile
     - [Put](./stochddpm). Realization of the Stochastic DDPM
 - Results
       <p align="center">
-      <img src="data/imgs/stoch_mnist.png" alt="drawing" width="340"/>
+      <img src="data/imgs/stoch_mnist.png" alt="drawing" width="150"/>
       </p>
 
 
