@@ -30,7 +30,8 @@ docker build dockerfiles/Dockerfile
   * [Wasserstein GAN](#wasserstein-gan)
   * [Adversarial Auto Encoder](#adversarial-auto-encoder)
   * [Boundary Equilibrium Generative Adversarial Networks](#boundary-equilibrium-generative-adversarial-networks)
-
+* Other stuff
+  * [Transformer/ViT](./vit/ViT.pdf) 
 
 ---------
 ### Energy based models
