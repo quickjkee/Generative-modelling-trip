@@ -3,7 +3,9 @@ import argparse
 
 import torchvision
 from torch.utils.data import DataLoader
-from model import ViT
+
+from layers import ViT
+from model import Model
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -52,10 +54,11 @@ if __name__ == '__main__':
         batch_size=b_size, shuffle=True)
 
     vit = ViT(n_classes=10,
-              dim=64,
-              mlp_dim=128,
-              n_blocks=6,
-              n_heads=8,
+              dim=32,
+              mlp_dim=64,
+              n_blocks=4,
+              n_heads=6,
               img_size=32,
               patch_size=4)
-    vit.fit(5000, 3e-3, trainloader, testloader)
+    model = Model(vit)
+    model.fit(5000, 3e-3, trainloader, testloader)
