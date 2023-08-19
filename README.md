@@ -16,6 +16,7 @@ docker build dockerfiles/Dockerfile
 ```
 ---------
 ### Table of contents
+* [Consistency Models](#consistency-models)
 * [Energy based models](#energy-based-models)
 * Score based models
   * [Noise conditional score model](#noise-conditional-score-model)
@@ -32,6 +33,10 @@ docker build dockerfiles/Dockerfile
   * [Boundary Equilibrium Generative Adversarial Networks](#boundary-equilibrium-generative-adversarial-networks)
 * Other stuff
   * [Transformer/ViT](./vit/ViT.pdf) 
+
+---------
+### Consistency Models
+- Theory
 
 ---------
 ### Energy based models
