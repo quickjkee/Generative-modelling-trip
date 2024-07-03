@@ -1,8 +1,8 @@
 ## Generative modelling trip
 
-Here you can find some useful information (i hope so) to embark on a journey
+Here you can find some useful information to embark on a journey
 through generative models. You can find __theoretical notes__ about
-generative models and code for the __realization__.
+diiferent generative models and code for the __realization__.
 
 > How to run?
 
@@ -16,7 +16,7 @@ docker build dockerfiles/Dockerfile
 ```
 ---------
 ### Table of contents
-* [Consistency Models](#consistency-models)
+* [Distilled Diffusion Models](#distilled-diffusion-models)
 * [Energy based models](#energy-based-models)
 * Score based models
   * [Noise conditional score model](#noise-conditional-score-model)
@@ -35,14 +35,18 @@ docker build dockerfiles/Dockerfile
   * [Transformer/ViT](./vit/ViT.pdf) 
 
 ---------
-### Consistency Models
+### Distilled Diffusion Models
 - Theory
+  - [Click](./distilled_diffusion/theory/Distilled_diffusion_models.pdf). My notes on [Consistency Models](https://arxiv.org/abs/2303.01469), 
+  [Multistep Consistency Models](https://arxiv.org/abs/2403.06807), [PaGoDa](https://arxiv.org/abs/2405.14822), 
+  [DMD](https://openaccess.thecvf.com/content/CVPR2024/html/Yin_One-step_Diffusion_with_Distribution_Matching_Distillation_CVPR_2024_paper.html), 
+  [ADD](https://arxiv.org/abs/2311.17042) and [Score Identity Distillation](https://openreview.net/forum?id=QhqQJqe0Wq)
 
 ---------
 ### Energy based models
 
 - Theory
-    - [Put](./ebm/theory/EBM.pdf). My notes including introduction to EBM, Maximum Likelihood training with MCMC,
+    - [Click](./ebm/theory/EBM.pdf). My notes including introduction to EBM, Maximum Likelihood training with MCMC,
       MCMC base theory, Metropolis-Hastings method, Hamiltonian and Langevin dynamics,
       score matching (denoising, sliced) for training EBM, noise contrastive estimation.
     - [Must read](https://arxiv.org/abs/2101.03288). Paper of Yang Song about EBM.
@@ -52,7 +56,7 @@ docker build dockerfiles/Dockerfile
       information about MCMC can be found).
 
 - Code
-    - [Put](./ebm/mle_mcmc). Realization of the Maximum Likelihood training with MCMC
+    - [Click](./ebm/mle_mcmc). Realization of the Maximum Likelihood training with MCMC
     - in progress. Realization of the Noise Contrastive Estimation
 - Results
     - __NCE__ model (toy example)
@@ -65,13 +69,13 @@ docker build dockerfiles/Dockerfile
 ### Score based models through SDE
 
 - Theory
-    - [Put](./stochddpm/theory/SDE_ODE_framework.pdf). My notes about stochastic ddpm
-    - [Put](./stochddpm/theory/StochDDPM.pdf). My notes about stochastic ddpm 2
+    - [Click](./stochddpm/theory/SDE_ODE_framework.pdf). My notes about stochastic ddpm
+    - [Click](./stochddpm/theory/StochDDPM.pdf). My notes about stochastic ddpm 2
     - [Must read](https://openreview.net/forum?id=PxTIG12RRHS). Original paper.
     - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
     - [Must watch](https://colab.research.google.com/drive/120kYYBOVa1i0TD85RjlEkFjaWDxSFUx3?usp=sharing). Colab notebook with example
 - Code
-    - [Put](./stochddpm). Realization of the Stochastic DDPM
+    - [Click](./stochddpm). Realization of the Stochastic DDPM
 - Results
       <p align="center">
       <img src="data/imgs/stoch_mnist.png" alt="drawing" width="150"/>
@@ -82,13 +86,13 @@ docker build dockerfiles/Dockerfile
 ### Noise conditional score model
 
 - Theory
-    - [Put](./score/theory/ScoreBased.pdf). My notes about score based models (mostly based on previous notes about EBM)
+    - [Click](./score/theory/ScoreBased.pdf). My notes about score based models (mostly based on previous notes about EBM)
     - [Must read](https://arxiv.org/abs/1907.05600). Original paper about score based generative models.
     - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
     - [Must read](https://arxiv.org/pdf/2006.09011.pdf). Paper with some techniques about how to train SBM.
     - [Must watch](https://www.youtube.com/watch?v=8TcNXi3A5DI&t=4056s). Lecture from Stefano Ermon.
 - Code
-    - [Put](./score). Realization of the Score Matching with Denoising Score Matching.
+    - [Click](./score). Realization of the Score Matching with Denoising Score Matching.
 - Results
       <p align="center">
       <img src="data/imgs/score.png" alt="drawing" width="340"/>
@@ -101,11 +105,11 @@ docker build dockerfiles/Dockerfile
 ### Denoising Diffusion Probabilistic Models
 
 - Theory
-    - [Put](./ddpm/theory/DDPM.pdf). My notes about DDPM
+    - [Click](./ddpm/theory/DDPM.pdf). My notes about DDPM
     - [Must read](https://arxiv.org/abs/2006.11239). Original paper about score based generative models.
     - [Must read](https://yang-song.net/blog/2021/score/). Blog of Yang Song about SBM.
 - Code
-    - [Put](./ddpm). Realization of the DDPM.
+    - [Click](./ddpm). Realization of the DDPM.
 - Results
       <p align="center">
       <img src="data/imgs/ddpm_mnist.png" alt="drawing" width="340"/>
@@ -119,12 +123,12 @@ docker build dockerfiles/Dockerfile
 ### Variational Auto Encoders
 
 - Theory
-  - [Put](./VAE/theory/VAE.pdf). My notes about VAE (motivation, evidence lower bound, EM algorithm,
+  - [Click](./VAE/theory/VAE.pdf). My notes about VAE (motivation, evidence lower bound, EM algorithm,
   something from information theory)
   - [Must read](https://arxiv.org/abs/1606.05908). Tutorial about VAE, great to start.
   - [Must read](https://arxiv.org/abs/1312.6114?context=cs.LG). Original paper about VAE.
 - Code
-  - [Put](./VAE). Realization of the VAE
+  - [Click](./VAE). Realization of the VAE
 - Results
   - MNIST 
       <p align="center">
@@ -134,11 +138,11 @@ docker build dockerfiles/Dockerfile
 ---------------
 ### Variational Auto Encoder with Normalizing flow
 - Theory
-  - [Put](./vae_flows/theory/vae_flows_theory.pdf).  My short notes about combination of normalizing flows with VAE (motivation and derivation)
+  - [Click](./vae_flows/theory/vae_flows_theory.pdf).  My short notes about combination of normalizing flows with VAE (motivation and derivation)
   - [Must read](https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial11/NF_image_modeling.html). Tutorial about normalizing flows 
   - [Must read](https://arxiv.org/pdf/1505.05770.pdf). Original paper
 - Code
-  - [Put](./vae_flows). Realization of planar flows and VAE with normalizing flows
+  - [Click](./vae_flows). Realization of planar flows and VAE with normalizing flows
 - Results
   - MNIST 
       <p align="center">
@@ -148,11 +152,9 @@ docker build dockerfiles/Dockerfile
 ----------------
 ### Generative Adversarial Network
 - Theory
-  - in progress.  My notes about GAN (some thoughts about instability, view on loss function)
-  - [Must read]. A lot of stuff on the internet.
   - [Must read](https://arxiv.org/abs/1406.2661). Original paper
 - Code
-  - [Put](./GAN). Realization of GAN
+  - [Click](./GAN). Realization of GAN
 - Results
    - MNIST (DCGAN)
       <p align="center">
@@ -162,7 +164,7 @@ docker build dockerfiles/Dockerfile
 ------------
 ### Boundary Equilibrium Generative Adversarial Networks
 - Theory
-  - [Put](./began/theory/BEGAN.pdf).  My notes about BEGAN
+  - [Click](./began/theory/BEGAN.pdf).  My notes about BEGAN
   - [Must read](https://arxiv.org/abs/1703.10717). Original paper
   - [Must read](https://jonathan-hui.medium.com/gan-energy-based-gan-ebgan-boundary-equilibrium-gan-began-4662cceb7824). Blog about BEGAN
 - Code
@@ -175,7 +177,7 @@ docker build dockerfiles/Dockerfile
 ----------------
 ### Wasserstein GAN
 - Theory
-  - [Put](./WGAN/theory/WGAN.pdf).  My notes about WGAN (discussions about the main problem of the GAN)
+  - [Click](./WGAN/theory/WGAN.pdf).  My notes about WGAN (discussions about the main problem of the GAN)
   - [Must read](https://www.alexirpan.com/2017/02/22/wasserstein-gan.html). Tutorial about WGAN
   - [Must watch](https://www.youtube.com/watch?v=ymWDGzpQdls&t=692s). Great explanation of Wasserstein distance (Earth Mover's Distance)
   - [Must read](https://arxiv.org/abs/1701.07875?context=cs). Original paper
@@ -190,10 +192,10 @@ docker build dockerfiles/Dockerfile
 --------------
 ### VAE GAN
 - Theory
-  - [Put](./vae_gan/theory/VaeGan_theory.pdf).  My notes about VAE GAN
+  - [Click](./vae_gan/theory/VaeGan_theory.pdf).  My notes about VAE GAN
   - [Must read](https://arxiv.org/abs/1512.09300?context=cs.CV). Original paper
 - Code
-  - [Put](./vae_gan). Realization of VAE GAN
+  - [Click](./vae_gan). Realization of VAE GAN
 - Results
   - MNIST 
       <p align="center">
@@ -203,10 +205,10 @@ docker build dockerfiles/Dockerfile
 ------------
 ### Adversarial Auto Encoder
 - Theory
-  - [Put](./adversarial_auto_encoder/theory/AAE_some_theory.pdf).  My notes about AAE
+  - [Click](./adversarial_auto_encoder/theory/AAE_some_theory.pdf).  My notes about AAE
   - [Must read](https://arxiv.org/abs/1511.05644). Original paper
 - Code
-  - [Put](./vae_gan). Realization of AAE
+  - [Click](./vae_gan). Realization of AAE
 - Results
   - MNIST 
       <p align="center">
