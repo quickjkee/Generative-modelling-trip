@@ -1,8 +1,7 @@
-## Generative modelling trip
+## Journey through generative modeling
 
-Here you can find some useful information to embark on a journey
-through generative models. You can find __theoretical notes__ about
-diiferent generative models and code for the __realization__.
+Here you can find some useful information for embarking on a journey through generative models. 
+You will find __theoretical notes__ about different generative models, as well as code for their __realization__.
 
 > How to run?
 
